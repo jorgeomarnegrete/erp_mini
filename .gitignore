@@ -1,0 +1,22 @@
+# Node & Frontend
+node_modules/
+dist/
+build/
+.npm/
+npm-debug.log
+
+# Python & Backend
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Entornos y SO
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

@@ -1,0 +1,96 @@
+import { useState, createContext, useContext, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import axios from 'axios';
+import Login from './pages/Login';
+import Users from './pages/Users';
+import TiposResp from './pages/TiposResp';
+import TiposDoc from './pages/TiposDoc';
+import ListasPrecios from './pages/ListasPrecios';
+import Vendedores from './pages/Vendedores';
+import Clientes from './pages/Clientes';
+import Layout from './components/Layout';
+
+export const AuthContext = createContext();
+
+export const useAuth = () => useContext(AuthContext);
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await api.get('/api/auth/me');
+          setUser(res.data);
+        } catch (error) {
+          localStorage.removeItem('token');
+          setUser(null);
+        }
+      }
+      setLoading(false);
+    };
+
+    fetchUser();
+  }, []);
+
+  const login = async (username, password) => {
+    const formData = new URLSearchParams();
+    formData.append('username', username);
+    formData.append('password', password);
+    
+    const res = await api.post('/api/auth/login', formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+    const { access_token } = res.data;
+    localStorage.setItem('token', access_token);
+    
+    // Fetch user details
+    const userRes = await api.get('/api/auth/me', {
+      headers: { Authorization: `Bearer ${access_token}` }
+    });
+    setUser(userRes.data);
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+  };
+
+  if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Cargando...</div>;
+
+  return (
+    <AuthContext.Provider value={{ user, login, logout, api }}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+          <Route path="/" element={user ? <Layout /> : <Navigate to="/login" />}>
+            <Route index element={<div className="p-8 text-center text-gray-500">Bienvenido al sistema</div>} />
+            <Route path="usuarios" element={user?.is_admin ? <Users /> : <Navigate to="/" />} />
+            <Route path="archivos/tipos-resp" element={<TiposResp />} />
+            <Route path="archivos/tipos-doc" element={<TiposDoc />} />
+            <Route path="archivos/listas-precios" element={<ListasPrecios />} />
+            <Route path="archivos/vendedores" element={<Vendedores />} />
+            <Route path="clientes" element={<Clientes />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthContext.Provider>
+  );
+}
+
+export default App;
