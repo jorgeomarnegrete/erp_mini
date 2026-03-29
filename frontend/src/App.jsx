@@ -8,6 +8,10 @@ import TiposDoc from './pages/TiposDoc';
 import ListasPrecios from './pages/ListasPrecios';
 import Vendedores from './pages/Vendedores';
 import Clientes from './pages/Clientes';
+import PuntosVenta from './pages/PuntosVenta';
+import Categorias from './pages/Categorias';
+import TasasIva from './pages/TasasIva';
+import Productos from './pages/Productos';
 import Layout from './components/Layout';
 
 export const AuthContext = createContext();
@@ -81,10 +85,14 @@ function App() {
           <Route path="/" element={user ? <Layout /> : <Navigate to="/login" />}>
             <Route index element={<div className="p-8 text-center text-gray-500">Bienvenido al sistema</div>} />
             <Route path="usuarios" element={user?.is_admin ? <Users /> : <Navigate to="/" />} />
+            <Route path="puntos-venta" element={user?.is_admin ? <PuntosVenta /> : <Navigate to="/" />} />
+            <Route path="tasas-iva" element={user?.is_admin ? <TasasIva /> : <Navigate to="/" />} />
             <Route path="archivos/tipos-resp" element={<TiposResp />} />
             <Route path="archivos/tipos-doc" element={<TiposDoc />} />
             <Route path="archivos/listas-precios" element={<ListasPrecios />} />
             <Route path="archivos/vendedores" element={<Vendedores />} />
+            <Route path="archivos/categorias" element={<Categorias />} />
+            <Route path="archivos/productos" element={<Productos />} />
             <Route path="clientes" element={<Clientes />} />
           </Route>
         </Routes>

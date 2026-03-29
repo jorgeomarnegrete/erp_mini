@@ -5,12 +5,16 @@ from contextlib import asynccontextmanager
 from database import engine, get_db
 from models.user import Base, User, Menu
 from core.security import get_password_hash
-from routers import auth, users, tipo_resp, tipo_doc, lista_precio, vendedor, cliente
+from routers import auth, users, tipo_resp, tipo_doc, lista_precio, vendedor, cliente, punto_venta, categoria, tasa_iva, producto
 import models.tipo_resp
 import models.tipo_doc
 import models.lista_precio
 import models.vendedor
 import models.cliente
+import models.punto_venta
+import models.categoria
+import models.tasa_iva
+import models.producto
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -119,6 +123,54 @@ async def lifespan(app: FastAPI):
         m_clientes_update.parent_id = m_ventas_update.id
         m_clientes_update.orden = 2 # Porque POS es 1
         db.commit()
+
+    # Inyección Inicial Semilla Punto de Venta (Terminal 0001)
+    if db.query(models.punto_venta.PuntoVenta).count() == 0:
+        pv_inicial = models.punto_venta.PuntoVenta(numero=1, descripcion="Local - Casa Central", facturacion_electronica=True)
+        db.add(pv_inicial)
+        db.commit()
+
+    # Menú de Puntos de Venta anidado en Panel Admin
+    m_pv_exist = db.query(Menu).filter(Menu.ruta == "/puntos-venta").first()
+    if not m_pv_exist:
+        m_admin_ref = db.query(Menu).filter(Menu.nombre == "Panel Admin").first()
+        if m_admin_ref:
+            m_pv = Menu(nombre="Puntos de Venta", ruta="/puntos-venta", icono="MonitorSmartphone", parent_id=m_admin_ref.id, orden=3)
+            db.add(m_pv)
+            db.commit()
+
+    # Semilla Tasas IVA
+    if db.query(models.tasa_iva.TasaIva).count() == 0:
+        db.add_all([
+            models.tasa_iva.TasaIva(nombre="IVA General 21%", valor=21.0, codigo_arca="5"),
+            models.tasa_iva.TasaIva(nombre="IVA Reducido 10.5%", valor=10.5, codigo_arca="4"),
+            models.tasa_iva.TasaIva(nombre="Operación Exenta", valor=0.0, codigo_arca="3")
+        ])
+        db.commit()
+
+    # Menú Tasas de IVA (en Panel Admin, restringido a Jefes)
+    m_iva_exist = db.query(Menu).filter(Menu.ruta == "/tasas-iva").first()
+    if not m_iva_exist:
+        m_admin_ref = db.query(Menu).filter(Menu.nombre == "Panel Admin").first()
+        if m_admin_ref:
+            m_iva = Menu(nombre="Tasas impositivas (IVA)", ruta="/tasas-iva", icono="Landmark", parent_id=m_admin_ref.id, orden=4)
+            db.add(m_iva)
+            db.commit()
+
+    # Semilla Categorias
+    if db.query(models.categoria.Categoria).count() == 0:
+        cat_inicial = models.categoria.Categoria(nombre="Mercadería General", descripcion="Surtidos sin catalogar")
+        db.add(cat_inicial)
+        db.commit()
+
+    # Menú Categorías en Archivos Operativos
+    m_cat_exist = db.query(Menu).filter(Menu.ruta == "/archivos/categorias").first()
+    if not m_cat_exist:
+        m_archivos_ref = db.query(Menu).filter(Menu.nombre == "Archivos").first()
+        if m_archivos_ref:
+            m_cat = Menu(nombre="Rubros / Categorías", ruta="/archivos/categorias", icono="Boxes", parent_id=m_archivos_ref.id, orden=7)
+            db.add(m_cat)
+            db.commit()
     
     # Inyectar usuario inicial
     admin_email = "jnegrete@gmail.com"
@@ -158,3 +210,7 @@ app.include_router(tipo_doc.router)
 app.include_router(lista_precio.router)
 app.include_router(vendedor.router)
 app.include_router(cliente.router)
+app.include_router(punto_venta.router)
+app.include_router(categoria.router)
+app.include_router(tasa_iva.router)
+app.include_router(producto.router)
