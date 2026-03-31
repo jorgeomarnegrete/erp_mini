@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { MonitorSmartphone, Edit, Trash2, Plus, CheckCircle2, XCircle, X, ShieldAlert } from 'lucide-react';
+import { MonitorSmartphone, Edit, Trash2, Plus, CheckCircle2, XCircle, X, ShieldAlert, Hash } from 'lucide-react';
 
 export default function PuntosVenta() {
   const [puntos, setPuntos] = useState([]);
@@ -9,7 +9,10 @@ export default function PuntosVenta() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
-  const [formData, setFormData] = useState({ id: null, numero: 1, descripcion: '', facturacion_electronica: false, activo: true });
+  const [formData, setFormData] = useState({ 
+    id: null, numero: 1, descripcion: '', facturacion_electronica: false, activo: true,
+    prox_cotizacion: 1, prox_pedido: 1, prox_factura_a: 1, prox_factura_b: 1, prox_factura_c: 1, prox_remito: 1, prox_recibo: 1
+  });
   const [formError, setFormError] = useState('');
 
   const fetchData = async () => {
@@ -28,7 +31,10 @@ export default function PuntosVenta() {
 
   const openCreateModal = () => {
     setModalMode('create');
-    setFormData({ id: null, numero: (puntos.length > 0 ? Math.max(...puntos.map(p => p.numero)) + 1 : 1), descripcion: '', facturacion_electronica: false, activo: true });
+    setFormData({ 
+      id: null, numero: (puntos.length > 0 ? Math.max(...puntos.map(p => p.numero)) + 1 : 1), descripcion: '', facturacion_electronica: false, activo: true,
+      prox_cotizacion: 1, prox_pedido: 1, prox_factura_a: 1, prox_factura_b: 1, prox_factura_c: 1, prox_remito: 1, prox_recibo: 1 
+    });
     setFormError('');
     setIsModalOpen(true);
   };
@@ -169,8 +175,8 @@ export default function PuntosVenta() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 transform transition-all border-t-8 border-red-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 transform transition-all border-t-8 border-red-600 my-8">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-black text-gray-900 flex items-center w-full mt-2">
                 <MonitorSmartphone className="w-7 h-7 mr-3 text-red-600" />
@@ -226,6 +232,37 @@ export default function PuntosVenta() {
                     </label>
                  </div>
                  <p className="text-xs text-blue-700 mt-2 font-medium leading-relaxed ml-8">Si habilitas esta opción, el sistema contactará la base militar del gobierno para solicitar el <strong>CAE (Código de Autorización)</strong> devolviendo una boleta 100% legal hacia el cliente. Requiere configurar certificados en el Backend.</p>
+              </div>
+
+              {/* SECCIÓN NUMERADORES */}
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex items-center mb-4">
+                  <Hash className="w-5 h-5 text-gray-500 mr-2" />
+                  <h4 className="text-lg font-black text-gray-800">Configuración Numérica de Comprobantes</h4>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-5 rounded-xl border border-gray-100 shadow-inner">
+                  {[
+                    { key: 'prox_cotizacion', label: 'Cotización' },
+                    { key: 'prox_pedido', label: 'Pedido' },
+                    { key: 'prox_factura_a', label: 'Factura A' },
+                    { key: 'prox_factura_b', label: 'Factura B' },
+                    { key: 'prox_factura_c', label: 'Factura C' },
+                    { key: 'prox_remito', label: 'Remito' },
+                    { key: 'prox_recibo', label: 'Recibo' }
+                  ].map((campo) => (
+                     <div key={campo.key}>
+                       <label className="block text-xs font-bold text-gray-600 mb-1">{campo.label}</label>
+                       <input
+                         type="number"
+                         min="1"
+                         required
+                         value={formData[campo.key]}
+                         onChange={(e) => setFormData({...formData, [campo.key]: parseInt(e.target.value) || 1})}
+                         className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 outline-none font-mono font-bold text-gray-800"
+                       />
+                     </div>
+                  ))}
+                </div>
               </div>
 
               <div className="flex items-center pt-2 mt-2 ml-1">

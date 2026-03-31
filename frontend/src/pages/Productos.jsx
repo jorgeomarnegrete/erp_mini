@@ -131,12 +131,12 @@ export default function Productos() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("¿Continuar la purga de este producto y quitarlo del catálogo entero?")) {
+    if (window.confirm("¿Seguro que desea eliminar este producto?")) {
       try {
         await api.delete(`/api/productos/${id}`);
         fetchAllData();
       } catch (err) {
-        alert(err.response?.data?.detail || 'Fallo técnico destruyendo sku.');
+        alert(err.response?.data?.detail || 'Error al eliminar el producto.');
       }
     }
   };
@@ -144,7 +144,7 @@ export default function Productos() {
   if (loading) return (
      <div className="flex flex-col justify-center items-center h-64 text-indigo-600">
        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-       <p className="font-semibold animate-pulse">Armando Planillas de Inventario Integral...</p>
+       <p className="font-semibold animate-pulse">Cargando productos...</p>
      </div>
   );
 
@@ -225,10 +225,10 @@ export default function Productos() {
                 </td>
                 
                 <td className="px-6 py-4 whitespace-nowrap text-center space-x-2">
-                  <button onClick={() => openEditModal(prod)} className="text-indigo-600 bg-indigo-50 p-2 rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="Editar Ficha">
+                  <button onClick={() => openEditModal(prod)} className="text-indigo-600 bg-indigo-50 p-2 rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="Editar">
                     <Edit className="w-5 h-5" />
                   </button>
-                  <button onClick={() => handleDelete(prod.id)} className="text-gray-400 bg-gray-50 hover:bg-red-500 hover:text-white p-2 rounded-lg transition-all shadow-sm" title="Retirar Permanente">
+                  <button onClick={() => handleDelete(prod.id)} className="text-gray-400 bg-gray-50 hover:bg-red-500 hover:text-white p-2 rounded-lg transition-all shadow-sm" title="Eliminar">
                     <Trash2 className="w-5 h-5" />
                   </button>
                 </td>
@@ -236,7 +236,7 @@ export default function Productos() {
             ))}
             {productos.length === 0 && (
                 <tr>
-                   <td colSpan="5" className="px-6 py-12 text-center text-gray-400 font-semibold text-lg italic">Bodega vacía. Agregá tu primer producto.</td>
+                   <td colSpan="5" className="px-6 py-12 text-center text-gray-400 font-semibold text-lg italic">No hay productos registrados.</td>
                 </tr>
             )}
           </tbody>
@@ -304,12 +304,12 @@ export default function Productos() {
                      </div>
 
                      <div className="p-5 bg-emerald-50 rounded-2xl border-2 border-emerald-100 flex flex-col space-y-4">
-                        <label className="block text-base font-black text-emerald-900 tracking-tight">Costo Directo NETO de Fabricación / Compra *</label>
+                        <label className="block text-base font-black text-emerald-900 tracking-tight">Costo Neto *</label>
                         <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-emerald-600">$</span>
                             <input type="number" step="0.01" min="0" required value={formData.costo_neto} onChange={e => setFormData({...formData, costo_neto: parseFloat(e.target.value) || 0})} className="w-full pl-10 pr-4 py-4 rounded-xl border-2 border-emerald-300 focus:border-emerald-600 outline-none font-black text-3xl text-emerald-800 bg-white" />
                         </div>
-                        <p className="text-xs font-semibold text-emerald-700 leading-snug">Sobre este número se encadenarán las Listas de Precios para sugerir a cuánto lo debes cobrar.</p>
+                        <p className="text-xs font-semibold text-emerald-700 leading-snug">Precio de costo sin IVA. Se usará como base para el cálculo de márgenes.</p>
                      </div>
                      
                      <div className="grid grid-cols-2 gap-5 w-full">
@@ -320,24 +320,24 @@ export default function Productos() {
                      </div>
                   </div>
 
-                  {/* COLUMNA 2: Matriz Híbrida de Valoración Comercial */}
+                  {/* COLUMNA 2: Configuración de Precios */}
                   <div className="space-y-6 flex flex-col border p-6 rounded-2xl bg-gray-50/50">
                      <div className="pb-3 border-b-2 border-purple-200 flex flex-col justify-start">
                         <div className="flex items-center w-full">
                            <Calculator className="w-5 h-5 mr-2 text-purple-600" />
-                           <h4 className="text-xl font-bold text-gray-900 tracking-tight">Precios Netos</h4>
+                           <h4 className="text-xl font-bold text-gray-900 tracking-tight">Precios de Venta</h4>
                         </div>
-                        <p className="text-xs font-medium text-gray-500 mt-2 leading-relaxed">Deje la columna "Precio Personalizado" vacía para que el software aplique las reglas matemáticas automáticas. Escriba un número explícito para forzar un quiebre de reglas sobreescribiendo el resultado para esa lista de clientes pura.</p>
+                        <p className="text-xs font-medium text-gray-500 mt-2 leading-relaxed">Deje la columna "Precio Personalizado" vacía para aplicar el margen automático de la lista de precios.</p>
                      </div>
 
                      <div className="overflow-x-auto overflow-y-auto w-full custom-scrollbar max-h-96 pr-2 rounded-xl bg-white border shadow-sm flex flex-col items-center">
                         <table className="w-full text-left border-collapse table-auto">
                            <thead className="bg-gray-100/80 sticky top-0 hidden md:table-header-group">
                               <tr>
-                                 <th className="px-3 py-3 text-xs font-black text-gray-600 uppercase tracking-wider w-1/4">Lista Target</th>
-                                 <th className="px-3 py-3 text-xs font-black text-gray-600 uppercase tracking-wider text-center w-1/4" title="Margen configurado en el catálogo">Regla (%)</th>
-                                 <th className="px-3 py-3 text-xs font-black text-purple-700 uppercase tracking-wider text-right bg-purple-50 w-1/3">Sugerencia Auto.</th>
-                                 <th className="px-3 py-3 text-xs font-black text-rose-700 uppercase tracking-wider text-right bg-rose-50 w-1/3 cursor-help border-l-2 border-rose-200" title="NETO DE IVA. El Facturador sumará el IVA al número que escribas acá.">Custom Neto</th>
+                                 <th className="px-3 py-3 text-xs font-black text-gray-600 uppercase tracking-wider w-1/4">Lista de Precios</th>
+                                 <th className="px-3 py-3 text-xs font-black text-gray-600 uppercase tracking-wider text-center w-1/4" title="Margen configurado en la lista">Margen (%)</th>
+                                 <th className="px-3 py-3 text-xs font-black text-purple-700 uppercase tracking-wider text-right bg-purple-50 w-1/3">Precio Calculado</th>
+                                 <th className="px-3 py-3 text-xs font-black text-rose-700 uppercase tracking-wider text-right bg-rose-50 w-1/3 cursor-help border-l-2 border-rose-200" title="Precio Neto sin IVA.">Precio Personalizado</th>
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-gray-100 flex-1 w-full">
@@ -372,7 +372,7 @@ export default function Productos() {
                                                      value={valOverride} 
                                                      onChange={(e) => handleCustomPriceChange(lista.id, e.target.value)} 
                                                      className="w-28 xl:w-32 px-2 py-1.5 rounded-lg border-2 border-rose-200 focus:border-rose-600 focus:ring-2 focus:ring-rose-200 outline-none text-right font-black text-rose-900 bg-white placeholder-rose-200 min-w-0" 
-                                                     placeholder="Mano pura" 
+                                                     placeholder="Opcional" 
                                                   />
                                                </div>
                                                {/* Calculadora en gris oscuro (Mostrador Final) */}

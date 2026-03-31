@@ -5,13 +5,13 @@ from database import get_db
 from models.user import User
 from schemas.tasa_iva import TasaIvaCreate, TasaIvaUpdate, TasaIvaResponse
 from crud import tasa_iva as crud_iva
-from routers.auth import get_current_admin_user
+from routers.auth import get_current_admin_user, get_current_user
 
 router = APIRouter(prefix="/api/tasas-iva", tags=["tasa_iva"])
 
-# Todas las de IVA son exclusivas para Admin.
+# Lectura de IVA permitida para todos para poder mostrar productos.
 @router.get("", response_model=list[TasaIvaResponse])
-async def read_all_iva(current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def read_all_iva(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Lectura de Impuestos"""
     return crud_iva.get_all(db)
 

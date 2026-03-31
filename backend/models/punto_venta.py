@@ -11,4 +11,13 @@ class PuntoVenta(Base):
     # Fundamental para el futuro envío del XML a la AFIP
     facturacion_electronica = Column(Boolean, default=False, nullable=False)
     
+    # Numeradores y correlativos activos para este punto de venta
+    prox_cotizacion = Column(Integer, default=1, nullable=False)
+    prox_pedido = Column(Integer, default=1, nullable=False)
+    prox_factura_a = Column(Integer, default=1, nullable=False)
+    prox_factura_b = Column(Integer, default=1, nullable=False)
+    prox_factura_c = Column(Integer, default=1, nullable=False)
+    prox_remito = Column(Integer, default=1, nullable=False)
+    prox_recibo = Column(Integer, default=1, nullable=False)
+    
     activo = Column(Boolean, default=True, nullable=False)
