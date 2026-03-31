@@ -155,14 +155,14 @@ export default function Productos() {
           <div className="bg-indigo-600 p-2 rounded-lg text-white mr-4 shadow-md">
             <Package className="w-6 h-6" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Cámara de Stock y Mercadería</h2>
+          <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Productos</h2>
         </div>
         <div className="flex items-center space-x-4">
           <span className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold shadow-sm border border-indigo-200">
             {productos.length} SKUs Enlistados
           </span>
           <button onClick={openCreateModal} className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-bold transition-all shadow-md">
-            <Plus className="w-5 h-5 mr-1" /> Nuevo Empaque (Altas)
+            <Plus className="w-5 h-5 mr-1" /> Nuevo Producto  
           </button>
         </div>
       </div>
@@ -171,11 +171,11 @@ export default function Productos() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 text-gray-500 font-bold text-xs tracking-wider uppercase border-b border-gray-200">
-              <th className="px-6 py-4">Ficha Técnica</th>
-              <th className="px-6 py-4">Costo Declarado</th>
-              <th className="px-6 py-4">Motor de Precios</th>
-              <th className="px-6 py-4 text-center">Unidades Físicas</th>
-              <th className="px-6 py-4 text-center">Protocolo Operativo</th>
+              <th className="px-6 py-4">Nombre</th>
+              <th className="px-6 py-4">Costo</th>
+              <th className="px-6 py-4">Lista</th>
+              <th className="px-6 py-4 text-center">Stock</th>
+              <th className="px-6 py-4 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100/60">
@@ -249,7 +249,7 @@ export default function Productos() {
             <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white flex justify-between items-center rounded-t-3xl sticky top-0 z-10">
               <h3 className="text-2xl font-black text-gray-900 flex items-center">
                 <Package className="w-7 h-7 mr-3 text-indigo-600" />
-                {modalMode === 'create' ? 'Inyección de un Nuevo Producto (SKU)' : 'Rediseño Arquitectónico del Artículo'}
+                {modalMode === 'create' ? 'Nuevo Producto' : 'Editar Producto'}
               </h3>
               <button type="button" onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-red-500 bg-white shadow-sm border p-2 rounded-full transition-all">
                 <X className="w-6 h-6" />
@@ -269,11 +269,11 @@ export default function Productos() {
                   <div className="space-y-6">
                      <div className="pb-3 border-b-2 border-gray-100 flex items-center">
                         <Tags className="w-5 h-5 mr-2 text-gray-400" />
-                        <h4 className="text-xl font-bold text-gray-800 tracking-tight">Cimientos Duros</h4>
+                        <h4 className="text-xl font-bold text-gray-800 tracking-tight">Datos Básicos</h4>
                      </div>
                      
                      <div>
-                       <label className="block text-sm font-extrabold text-gray-700 mb-1">Descriptor Comercial (Nombre) *</label>
+                       <label className="block text-sm font-extrabold text-gray-700 mb-1">Nombre *</label>
                        <input type="text" required value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-gray-900 font-bold bg-gray-50 focus:bg-white transition-all" placeholder="Ej. Alfajor Triple Negro" />
                      </div>
 
@@ -314,7 +314,7 @@ export default function Productos() {
                      
                      <div className="grid grid-cols-2 gap-5 w-full">
                         <div className="w-full">
-                           <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Bodega Físico (Pellízco)</label>
+                           <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Stock Actual</label>
                            <input type="number" step="0.01" value={formData.stock_actual} onChange={e => setFormData({...formData, stock_actual: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 font-black text-xl text-center outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800" />
                         </div>
                      </div>
@@ -325,7 +325,7 @@ export default function Productos() {
                      <div className="pb-3 border-b-2 border-purple-200 flex flex-col justify-start">
                         <div className="flex items-center w-full">
                            <Calculator className="w-5 h-5 mr-2 text-purple-600" />
-                           <h4 className="text-xl font-bold text-gray-900 tracking-tight">Motor Multi-Lista (Precios Netos)</h4>
+                           <h4 className="text-xl font-bold text-gray-900 tracking-tight">Precios Netos</h4>
                         </div>
                         <p className="text-xs font-medium text-gray-500 mt-2 leading-relaxed">Deje la columna "Precio Personalizado" vacía para que el software aplique las reglas matemáticas automáticas. Escriba un número explícito para forzar un quiebre de reglas sobreescribiendo el resultado para esa lista de clientes pura.</p>
                      </div>
@@ -394,10 +394,10 @@ export default function Productos() {
 
             <div className="px-8 py-5 border-t bg-gray-50 flex justify-end space-x-4 rounded-b-3xl mt-auto z-10 sticky bottom-0 border-t border-gray-100 shadow-[0_-15px_20px_-5px_rgba(0,0,0,0.03)] w-full">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-gray-700 bg-white hover:bg-gray-100 rounded-xl font-bold transition-all border shadow-sm">
-                  Descartar Ingeniería
+                  Cancelar
                 </button>
                 <button type="submit" form="producto-form" className="px-8 py-3 flex items-center text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl font-black shadow-lg transition-transform active:scale-95">
-                  <Package className="w-5 h-5 mr-2" /> {modalMode === 'create' ? 'Inyectar a Bodega de Facturación' : 'Rescribir Componente Arquitectónico'}
+                  <Package className="w-5 h-5 mr-2" /> {modalMode === 'create' ? 'Guardar Producto' : 'Actualizar Producto'}
                 </button>
             </div>
           </div>

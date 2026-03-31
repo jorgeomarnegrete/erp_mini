@@ -82,7 +82,7 @@ export default function Categorias() {
           <div className="bg-indigo-600 p-2 rounded-lg text-white mr-4 shadow-md">
             <Boxes className="w-6 h-6" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Rubros de Inventario</h2>
+          <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Rubros/Categorías</h2>
         </div>
         <div className="flex items-center space-x-4">
           <span className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold shadow-sm">
@@ -99,9 +99,9 @@ export default function Categorias() {
           <thead>
             <tr className="bg-gray-50/50 text-gray-500 font-semibold text-sm tracking-wider uppercase border-b border-gray-100">
               <th className="px-8 py-4">ID</th>
-              <th className="px-8 py-4 cursor-pointer hover:text-indigo-600">Nombre Familia</th>
-              <th className="px-8 py-4">Descripción Específica</th>
-              <th className="px-8 py-4 text-center">Estado Comercial</th>
+              <th className="px-8 py-4 cursor-pointer hover:text-indigo-600">Nombre</th>
+              <th className="px-8 py-4">Descripción</th>
+              <th className="px-8 py-4 text-center">Estado</th>
               <th className="px-8 py-4 text-center">Acciones</th>
             </tr>
           </thead>
@@ -146,7 +146,7 @@ export default function Categorias() {
             <div className="flex justify-between items-center mb-5">
               <h3 className="text-xl font-bold text-gray-900 flex items-center pb-2 border-b w-full mt-2">
                 <Boxes className="w-6 h-6 mr-2 text-indigo-600" />
-                {modalMode === 'create' ? 'Registro de Rubro Único' : 'Modificación de Rubro'}
+                {modalMode === 'create' ? 'Registro de Rubro' : 'Modificación de Rubro'}
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 absolute right-6 top-6">
                 <X className="w-6 h-6" />
@@ -159,11 +159,11 @@ export default function Categorias() {
             )}
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Nombre Comercial de la Familia *</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Nombre *</label>
                 <input type="text" required value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium" placeholder="Ej. Lácteos, Ferretería Ligera" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Descripción técnica o Excepciones</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Descripción</label>
                 <textarea rows="2" value={formData.descripcion} onChange={(e) => setFormData({...formData, descripcion: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none resize-none" placeholder="Anotaciones extra..."></textarea>
               </div>
               <div className="flex items-center pt-4 border-t border-gray-100 mt-4 ml-1">

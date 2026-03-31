@@ -160,14 +160,14 @@ export default function Clientes() {
           <div className="bg-indigo-600 p-2 rounded-lg text-white mr-4 shadow-md">
             <UserCheck className="w-6 h-6" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Directorio de Clientes</h2>
+          <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Clientes</h2>
         </div>
         <div className="flex items-center space-x-4">
           <span className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold shadow-sm">
             {clientes.length} Cuentas Activas
           </span>
           <button onClick={openCreateModal} className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm">
-            <Plus className="w-5 h-5 mr-1" /> Registrar Cliente
+            <Plus className="w-5 h-5 mr-1" /> Nuevo Cliente
           </button>
         </div>
       </div>
@@ -176,11 +176,11 @@ export default function Clientes() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 text-gray-500 font-semibold text-sm tracking-wider uppercase border-b border-gray-100">
-              <th className="px-6 py-4">Razón Social / Identidad Fiscal</th>
-              <th className="px-6 py-4">Condición de Venta</th>
-              <th className="px-6 py-4">Contacto Integral</th>
+              <th className="px-6 py-4">Razón Social / Datos Fiscales</th>
+              <th className="px-6 py-4">Lista de Precios</th>
+              <th className="px-6 py-4">Contacto</th>
               <th className="px-6 py-4 text-center">Estado</th>
-              <th className="px-6 py-4 text-center">Gestión</th>
+              <th className="px-6 py-4 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100/60">
@@ -225,9 +225,9 @@ export default function Clientes() {
 
                 <td className="px-6 py-4 text-center">
                   {c.activo ? (
-                    <span className="inline-flex items-center px-3 py-1 bg-emerald-100 text-emerald-800 rounded font-bold shadow-sm text-xs">Apto Comercial</span>
+                    <span className="inline-flex items-center px-3 py-1 bg-emerald-100 text-emerald-800 rounded font-bold shadow-sm text-xs">Activo</span>
                   ) : (
-                    <span className="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 rounded font-bold shadow-sm text-xs">Sancionado/Baja</span>
+                    <span className="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 rounded font-bold shadow-sm text-xs">Inactivo</span>
                   )}
                 </td>
                 
@@ -243,7 +243,7 @@ export default function Clientes() {
             ))}
             {clientes.length === 0 && (
                 <tr>
-                   <td colSpan="5" className="px-6 py-10 text-center text-gray-400 font-semibold italic">No existen cuentas de clientes registradas en la base operativa.</td>
+                   <td colSpan="5" className="px-6 py-10 text-center text-gray-400 font-semibold italic">No existen clientes registrados en la base operativa.</td>
                 </tr>
             )}
           </tbody>
@@ -257,7 +257,7 @@ export default function Clientes() {
             <div className="px-8 py-5 border-b bg-gray-50/50 flex justify-between items-center rounded-t-2xl sticky top-0 z-10">
               <h3 className="text-2xl font-black text-gray-900 flex items-center">
                 <Building2 className="w-7 h-7 mr-3 text-indigo-600" />
-                {modalMode === 'create' ? 'Apertura de Cuenta Corriente / Cliente' : 'Expediente del Cliente'}
+                {modalMode === 'create' ? 'Nuevo Cliente' : 'Edición de Cliente'}
               </h3>
               <button type="button" onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-red-600 bg-white shadow-sm border p-1 rounded-full transition-all">
                 <X className="w-6 h-6" />
@@ -287,7 +287,7 @@ export default function Clientes() {
 
                      <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-1">Tipo Identidad *</label>
+                          <label className="block text-sm font-bold text-gray-700 mb-1">Tipo de Documento *</label>
                           <select required value={formData.tipo_doc_id} onChange={e => setFormData({...formData, tipo_doc_id: parseInt(e.target.value)})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 text-gray-800 font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
                              <option value="" disabled>Seleccionar...</option>
                              {tiposDoc.map(td => <option key={td.id} value={td.id}>{td.nombre} ({td.abreviatura})</option>)}
@@ -321,7 +321,7 @@ export default function Clientes() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-1">Vendedor Zonal</label>
+                          <label className="block text-sm font-bold text-gray-700 mb-1">Vendedor</label>
                           <select value={formData.vendedor_id} onChange={e => setFormData({...formData, vendedor_id: e.target.value})} className="w-full px-3 py-2.5 rounded-xl border border-gray-300 outline-none focus:ring-2 text-sm bg-emerald-50/30 font-medium">
                              <option value="">Ninguno</option>
                              {vendedores.map(v => <option key={v.id} value={v.id}>{v.nombre} {v.apellido} ({v.porcentaje_comision}%)</option>)}
@@ -334,29 +334,29 @@ export default function Clientes() {
                   <div className="space-y-6 bg-gray-50 p-6 rounded-2xl border border-gray-100">
                      <div className="pb-2 border-b-2 border-gray-200 flex items-center">
                         <MapPin className="w-5 h-5 mr-1.5 text-gray-500" />
-                        <h4 className="text-lg font-bold text-gray-800 tracking-tight">Comunicación y Ubicación</h4>
+                        <h4 className="text-lg font-bold text-gray-800 tracking-tight">Contacto y Ubicación</h4>
                      </div>
 
                      <div className="grid grid-cols-2 gap-4">
                        <div>
-                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Tel. Empresa</label>
+                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Teléfono</label>
                          <input type="text" value={formData.telefono} onChange={e => setFormData({...formData, telefono: e.target.value})} className="w-full px-3 py-2 rounded-lg border outline-none focus:border-indigo-500 shadow-sm" placeholder="Opcional" />
                        </div>
                        <div>
-                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Email Adm.</label>
+                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Email</label>
                          <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-3 py-2 rounded-lg border outline-none focus:border-indigo-500 shadow-sm" placeholder="Opcional" />
                        </div>
                      </div>
 
                      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
-                        <label className="block text-sm font-extrabold text-indigo-900 border-b pb-1">Persona de Contacto Autorizada (Vínculo Directo)</label>
+                        <label className="block text-sm font-extrabold text-indigo-900 border-b pb-1">Contacto</label>
                         <div className="grid grid-cols-2 gap-4 pt-1">
                           <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Nombre y Cargo</label>
+                            <label className="block text-xs font-bold text-gray-500 mb-1">Nombre</label>
                             <input type="text" value={formData.nombre_contacto} onChange={e => setFormData({...formData, nombre_contacto: e.target.value})} className="w-full px-3 py-2 rounded-lg border outline-none focus:border-indigo-500" placeholder="Ej. Ing. Carlos, Compras" />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Línea Directa / Cel.</label>
+                            <label className="block text-xs font-bold text-gray-500 mb-1">Teléfono Celular</label>
                             <input type="text" value={formData.telefono_contacto} onChange={e => setFormData({...formData, telefono_contacto: e.target.value})} className="w-full px-3 py-2 rounded-lg border outline-none focus:border-indigo-500" placeholder="Ej. WhatsApp" />
                           </div>
                         </div>
@@ -380,19 +380,19 @@ export default function Clientes() {
                      </div>
                      
                      <div>
-                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Dirección de Entrega Legal</label>
+                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Dirección</label>
                        <input type="text" value={formData.direccion} onChange={e => setFormData({...formData, direccion: e.target.value})} className="w-full px-3 py-2.5 rounded-lg border outline-none shadow-sm focus:border-indigo-500 font-medium" placeholder="Calle, Nº, Puerta..." />
                      </div>
 
                      <div>
-                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Recordatorio Interno (Restringido - Solo Staff)</label>
+                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Observaciones</label>
                        <textarea rows="2" value={formData.observaciones} onChange={e => setFormData({...formData, observaciones: e.target.value})} className="w-full px-3 py-2 rounded-lg border outline-none shadow-sm resize-none focus:ring-2" placeholder="Ej. No despachar los días lluviosos..."></textarea>
                      </div>
                      
                      <div className="flex items-center pt-2">
                         <input type="checkbox" id="isActivo" checked={formData.activo} onChange={e => setFormData({...formData, activo: e.target.checked})} className="w-5 h-5 text-emerald-600 rounded cursor-pointer" />
                         <label htmlFor="isActivo" className="ml-2 block text-sm font-black text-emerald-800 cursor-pointer bg-emerald-100 px-3 py-1 rounded">
-                          Cliente con Flujo Activo (No Bloquear)
+                          Cliente Activo
                         </label>
                      </div>
                   </div>
@@ -401,10 +401,10 @@ export default function Clientes() {
 
             <div className="px-8 py-5 border-t bg-gray-50 flex justify-end space-x-4 rounded-b-2xl sticky bottom-0 z-10 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-700 bg-white hover:bg-gray-100 rounded-xl font-bold transition-all border shadow-sm">
-                  Cancelar Operación
+                  Cancelar
                 </button>
                 <button type="submit" form="cliente-form" className="px-8 py-2.5 flex items-center text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl font-black shadow-md transition-all">
-                  <Save className="w-5 h-5 mr-2" /> {modalMode === 'create' ? 'Inscribir Cliente a Padrón' : 'Asentar Cambios del Cliente'}
+                  <Save className="w-5 h-5 mr-2" /> {modalMode === 'create' ? 'Guardar' : 'Guardar'}
                 </button>
             </div>
           </div>

@@ -75,7 +75,7 @@ export default function TasasIva() {
     return (
       <div className="flex justify-center flex-col items-center h-64 text-amber-600">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mb-4"></div>
-        <p className="font-semibold text-center">Auditando Tasas Estatales...</p>
+        <p className="font-semibold text-center">Cargando datos...</p>
       </div>
     );
   }
@@ -88,13 +88,13 @@ export default function TasasIva() {
             <Landmark className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-gray-800 tracking-tight">Estructura Impositiva (Tributo IVA)</h2>
-            <p className="text-xs text-amber-600 font-bold tracking-wide uppercase mt-1">Nivel AFIP - Sensibilidad Admin</p>
+            <h2 className="text-2xl font-black text-gray-800 tracking-tight">Tasas de IVA</h2>
+            <p className="text-xs text-amber-600 font-bold tracking-wide uppercase mt-1">Sensibilidad Admin</p>
           </div>
         </div>
         <div className="flex items-center space-x-4">
           <button onClick={openCreateModal} className="flex items-center bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-lg font-bold shadow-md transition-all">
-            <Plus className="w-5 h-5 mr-1" /> Imponer Tasa (Ley)
+            <Plus className="w-5 h-5 mr-1" /> Nueva Tasa
           </button>
         </div>
       </div>
@@ -103,12 +103,12 @@ export default function TasasIva() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 text-gray-500 font-bold text-xs tracking-wider uppercase border-b border-gray-200">
-              <th className="px-8 py-4">ID Admin</th>
-              <th className="px-8 py-4">Cód AFIP (ARCA)</th>
-              <th className="px-8 py-4">Descriptor Nominal</th>
-              <th className="px-8 py-4 text-center">Porcentaje de Alicuota</th>
-              <th className="px-8 py-4 text-center">Validación Tributaria</th>
-              <th className="px-8 py-4 text-center">Alterar</th>
+              <th className="px-8 py-4">ID</th>
+              <th className="px-8 py-4">Código ARCA</th>
+              <th className="px-8 py-4">Descripción</th>
+              <th className="px-8 py-4 text-center">Alicuota</th>
+              <th className="px-8 py-4 text-center">Estado</th>
+              <th className="px-8 py-4 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100/60">
@@ -127,11 +127,11 @@ export default function TasasIva() {
                 <td className="px-8 py-4 whitespace-nowrap text-center">
                   {t.activo ? (
                     <span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 shadow-sm border border-emerald-200">
-                       <CheckCircle2 className="w-4 h-4 mr-1.5" /> TASA VIGENTE
+                       <CheckCircle2 className="w-4 h-4 mr-1.5" /> VIGENTE
                     </span>
                   ) : (
                     <span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
-                       <ShieldAlert className="w-4 h-4 mr-1.5" /> TASA CADUCADA
+                       <ShieldAlert className="w-4 h-4 mr-1.5" /> CADUCADA
                     </span>
                   )}
                 </td>
@@ -155,7 +155,7 @@ export default function TasasIva() {
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-black text-gray-900 flex items-center mt-2">
                 <Landmark className="w-7 h-7 mr-3 text-amber-500" />
-                {modalMode === 'create' ? 'Inscribir Impuesto' : 'Modificación de Ley'}
+                {modalMode === 'create' ? 'Nueva Tasa' : 'Modificar Tasa'}
               </h3>
               <button type="button" onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-black absolute right-6 top-6">
                 <X className="w-7 h-7" />
@@ -169,17 +169,17 @@ export default function TasasIva() {
             <form onSubmit={handleSave} className="space-y-6">
               
               <div>
-                 <label className="block text-sm font-extrabold text-gray-800 mb-1">Descriptor Legal / Referencia *</label>
+                 <label className="block text-sm font-extrabold text-gray-800 mb-1">Descripción *</label>
                  <input type="text" required value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-amber-500 outline-none font-medium" placeholder="Ej. IVA Super-reducido 5%" />
               </div>
               
               <div className="flex space-x-6">
                   <div className="w-1/2">
-                    <label className="block text-sm font-extrabold text-gray-800 mb-1">Aliquot / Valor Matemático (%)</label>
+                    <label className="block text-sm font-extrabold text-gray-800 mb-1">Alicuota (%)</label>
                     <input type="number" step="0.01" required value={formData.valor} onChange={(e) => setFormData({...formData, valor: parseFloat(e.target.value) || 0})} className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-amber-500 outline-none font-bold text-xl text-emerald-700 bg-emerald-50 text-center" />
                   </div>
                   <div className="w-1/2">
-                    <label className="block text-sm font-extrabold text-gray-800 mb-1">Cód. Sistema ARCA (Obligatorio)</label>
+                    <label className="block text-sm font-extrabold text-gray-800 mb-1">Código ARCA</label>
                     <input type="text" required value={formData.codigo_arca} onChange={(e) => setFormData({...formData, codigo_arca: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-amber-500 outline-none font-bold text-xl text-amber-700 bg-amber-50 text-center" placeholder="Ej: 5" />
                   </div>
               </div>
@@ -192,8 +192,8 @@ export default function TasasIva() {
               </div>
               
               <div className="mt-8 flex justify-end space-x-4 pt-6 border-t border-gray-100">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-700 bg-white hover:bg-gray-100 border shadow-sm rounded-xl font-bold transition-all">Ignorar</button>
-                <button type="submit" className="px-8 py-2.5 text-white bg-amber-500 hover:bg-amber-600 rounded-xl font-black shadow-md transition-all">Promulgar Tasa</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-700 bg-white hover:bg-gray-100 border shadow-sm rounded-xl font-bold transition-all">Cancelar</button>
+                <button type="submit" className="px-8 py-2.5 text-white bg-amber-500 hover:bg-amber-600 rounded-xl font-black shadow-md transition-all">Guardar</button>
               </div>
             </form>
           </div>

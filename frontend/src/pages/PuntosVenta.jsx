@@ -92,7 +92,7 @@ export default function PuntosVenta() {
           </div>
           <div>
              <h2 className="text-2xl font-black text-gray-800 tracking-tight">Puntos de Venta (Terminales)</h2>
-             <p className="text-xs text-red-600 font-bold tracking-wide uppercase mt-1">Configuración Estructural Sensible</p>
+             <p className="text-xs text-red-600 font-bold tracking-wide uppercase mt-1">Configuración Sensible</p>
           </div>
         </div>
         <div className="flex items-center space-x-4">
@@ -110,10 +110,10 @@ export default function PuntosVenta() {
           <thead>
             <tr className="bg-gray-50/50 text-gray-500 font-bold text-xs tracking-wider uppercase border-b border-gray-200">
               <th className="px-8 py-4">Terminal (ID)</th>
-              <th className="px-8 py-4">Denominación Técnica</th>
-              <th className="px-8 py-4 text-center">Modo de Operación ARCA</th>
-              <th className="px-8 py-4 text-center">Estado del Servidor</th>
-              <th className="px-8 py-4 text-center">Protocolos</th>
+              <th className="px-8 py-4">Denominación</th>
+              <th className="px-8 py-4 text-center">Modo de Operación</th>
+              <th className="px-8 py-4 text-center">Estado</th>
+              <th className="px-8 py-4 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100/60">
@@ -200,7 +200,7 @@ export default function PuntosVenta() {
                     />
                   </div>
                   <div className="w-2/3">
-                    <label className="block text-sm font-extrabold text-gray-800 mb-1">Denominación Interna *</label>
+                    <label className="block text-sm font-extrabold text-gray-800 mb-1">Nombre del Punto de Venta *</label>
                     <input
                       type="text"
                       required
@@ -247,7 +247,7 @@ export default function PuntosVenta() {
                 </button>
                 <button type="submit" className="px-8 py-2.5 text-white bg-red-600 hover:bg-red-700 rounded-xl font-black shadow-md transition-all">
                   <MonitorSmartphone className="w-5 h-5 inline mr-1.5" />
-                  {modalMode === 'create' ? 'Inscribir Terminal' : 'Compilar Cambios'}
+                  {modalMode === 'create' ? 'Guardar' : 'Guardar Cambios'}
                 </button>
               </div>
             </form>
@@ -257,3 +257,4 @@ export default function PuntosVenta() {
     </div>
   );
 }
+  
