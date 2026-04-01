@@ -12,6 +12,8 @@ import PuntosVenta from './pages/PuntosVenta';
 import Categorias from './pages/Categorias';
 import TasasIva from './pages/TasasIva';
 import Productos from './pages/Productos';
+import Empresa from './pages/Empresa';
+import Dashboard from './pages/Dashboard';
 import Layout from './components/Layout';
 
 export const AuthContext = createContext();
@@ -83,7 +85,7 @@ function App() {
         <Routes>
           <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
           <Route path="/" element={user ? <Layout /> : <Navigate to="/login" />}>
-            <Route index element={<div className="p-8 text-center text-gray-500">Bienvenido al sistema</div>} />
+            <Route index element={<Dashboard />} />
             <Route path="usuarios" element={user?.is_admin ? <Users /> : <Navigate to="/" />} />
             <Route path="puntos-venta" element={user?.is_admin ? <PuntosVenta /> : <Navigate to="/" />} />
             <Route path="tasas-iva" element={user?.is_admin ? <TasasIva /> : <Navigate to="/" />} />
@@ -94,6 +96,9 @@ function App() {
             <Route path="archivos/categorias" element={<Categorias />} />
             <Route path="archivos/productos" element={<Productos />} />
             <Route path="clientes" element={<Clientes />} />
+            
+            {/* Nueva Ruta Configuración Empresa */}
+            <Route path="config/empresa" element={user?.is_admin ? <Empresa /> : <Navigate to="/" />} />
           </Route>
         </Routes>
       </BrowserRouter>

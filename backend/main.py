@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from database import engine, get_db
 from models.user import Base, User, Menu
 from core.security import get_password_hash
-from routers import auth, users, tipo_resp, tipo_doc, lista_precio, vendedor, cliente, punto_venta, categoria, tasa_iva, producto
+from routers import auth, users, tipo_resp, tipo_doc, lista_precio, vendedor, cliente, punto_venta, categoria, tasa_iva, producto, empresa
 import models.tipo_resp
 import models.tipo_doc
 import models.lista_precio
@@ -15,6 +15,7 @@ import models.punto_venta
 import models.categoria
 import models.tasa_iva
 import models.producto
+import models.empresa
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,12 +37,36 @@ async def lifespan(app: FastAPI):
         
         # Submenús
         m_users = Menu(nombre="Gestión Usuarios", ruta="/usuarios", icono="Users", parent_id=m_admin.id, orden=1)
-        m_config = Menu(nombre="Configuraciones", ruta="/config", icono="Settings", parent_id=m_admin.id, orden=2)
+        m_config = Menu(nombre="Mi Empresa (Identidad)", ruta="/config/empresa", icono="Building2", parent_id=m_admin.id, orden=2)
         m_clientes = Menu(nombre="Clientes", ruta="/clientes", icono="UserCheck", parent_id=m_archivos.id, orden=1)
         m_productos = Menu(nombre="Productos", ruta="/productos", icono="Package", parent_id=m_archivos.id, orden=2)
         m_pos = Menu(nombre="Punto de Venta", ruta="/pos", icono="CreditCard", parent_id=m_ventas.id, orden=1)
         
         db.add_all([m_users, m_config, m_clientes, m_productos, m_pos])
+        db.commit()
+    
+    # Inyectar Semilla Empresa si tabla vacía
+    if db.query(models.empresa.Empresa).count() == 0:
+        # Busca el ID de "Responsable Inscripto" o fallback 1 
+        tr_ri = db.query(models.tipo_resp.TipoResp).filter(models.tipo_resp.TipoResp.abreviatura == "RI").first()
+        ri_id = tr_ri.id if tr_ri else 1
+        import datetime
+        emp = models.empresa.Empresa(
+            id=1,
+            razon_social="Insertar Razón Social S.R.L",
+            nombre_fantasia="Mi Negocio",
+            cuit="30-00000000-0",
+            ingresos_brutos="901-000000-1",
+            fecha_inicio_actividades=datetime.date.today(),
+            tipo_resp_id=ri_id,
+            domicilio_comercial="Av. Principal 1234, CABA",
+            provincia="Buenos Aires",
+            localidad="CABA",
+            telefono="011-4000-0000",
+            email="contacto@minegocio.com",
+            sitio_web="www.minegocio.com"
+        )
+        db.add(emp)
         db.commit()
         
     # Inyectar Semilla Tipos de Responsable si tabla vacía
@@ -214,3 +239,4 @@ app.include_router(punto_venta.router)
 app.include_router(categoria.router)
 app.include_router(tasa_iva.router)
 app.include_router(producto.router)
+app.include_router(empresa.router)
