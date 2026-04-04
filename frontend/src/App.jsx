@@ -12,7 +12,9 @@ import PuntosVenta from './pages/PuntosVenta';
 import Categorias from './pages/Categorias';
 import TasasIva from './pages/TasasIva';
 import Productos from './pages/Productos';
+import Cotizaciones from './pages/Cotizaciones';
 import Empresa from './pages/Empresa';
+import PlantillasDocumentos from './pages/PlantillasDocumentos';
 import Dashboard from './pages/Dashboard';
 import Layout from './components/Layout';
 
@@ -96,9 +98,11 @@ function App() {
             <Route path="archivos/categorias" element={<Categorias />} />
             <Route path="archivos/productos" element={<Productos />} />
             <Route path="clientes" element={<Clientes />} />
+            <Route path="cotizaciones" element={<Cotizaciones />} />
             
-            {/* Nueva Ruta Configuración Empresa */}
+            {/* Nueva Ruta Configuración Empresa y Diseño */}
             <Route path="config/empresa" element={user?.is_admin ? <Empresa /> : <Navigate to="/" />} />
+            <Route path="plantillas" element={user?.is_admin ? <PlantillasDocumentos /> : <Navigate to="/" />} />
           </Route>
         </Routes>
       </BrowserRouter>
