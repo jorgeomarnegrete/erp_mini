@@ -17,6 +17,8 @@ class Producto(Base):
     
     costo_neto = Column(Float, nullable=False, default=0.0)
     stock_actual = Column(Float, nullable=False, default=0.0)
+    stock_minimo = Column(Float, nullable=False, default=0.0)
+    unidad = Column(String, nullable=False, default="Unidades")
     activo = Column(Boolean, default=True, nullable=False)
 
     # Relaciones Eager.

@@ -18,7 +18,7 @@ export default function Productos() {
   
   const [formData, setFormData] = useState({
     id: null, codigo_interno: '', codigo_barras: '', nombre: '', descripcion: '',
-    categoria_id: '', tasa_iva_id: '', costo_neto: 0, stock_actual: 0, activo: true,
+    categoria_id: '', tasa_iva_id: '', costo_neto: 0, stock_actual: 0, stock_minimo: 0, unidad: 'Unidades', activo: true,
     precios_costum: [] // Array vivo de precios excepcionales { lista_precio_id, precio_personalizado }
   });
   
@@ -49,7 +49,7 @@ export default function Productos() {
   const getEmptyForm = () => ({
     id: null, codigo_interno: '', codigo_barras: '', nombre: '', descripcion: '',
     categoria_id: categorias[0]?.id || '', tasa_iva_id: tasasIva.find(t=>t.valor===21)?.id || tasasIva[0]?.id || '',
-    costo_neto: 0, stock_actual: 0, activo: true, precios_costum: []
+    costo_neto: 0, stock_actual: 0, stock_minimo: 0, unidad: 'Unidades', activo: true, precios_costum: []
   });
 
   const openCreateModal = () => {
@@ -72,6 +72,8 @@ export default function Productos() {
       tasa_iva_id: prod.tasa_iva_id,
       costo_neto: prod.costo_neto,
       stock_actual: prod.stock_actual,
+      stock_minimo: prod.stock_minimo || 0,
+      unidad: prod.unidad || 'Unidades',
       activo: prod.activo,
       precios_costum: prod.precios_personalizados.map(p => ({
          lista_precio_id: p.lista_precio_id,
@@ -219,8 +221,11 @@ export default function Productos() {
                 </td>
 
                 <td className="px-6 py-4 text-center">
-                  <span className={`inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-lg font-mono font-black border ${prod.stock_actual <= 0 ? 'border-red-400 text-red-600 bg-red-50' : 'border-gray-200'}`}>
-                    {prod.stock_actual}
+                  <span className={`inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-lg font-mono font-black border 
+                    ${prod.stock_actual <= 0 ? 'border-red-400 text-red-600 bg-red-50' : 
+                      prod.stock_actual <= prod.stock_minimo ? 'border-orange-400 text-orange-600 bg-orange-50' : 
+                      'border-gray-200'}`}>
+                    {prod.stock_actual.toFixed(2)} {prod.unidad}
                   </span>
                 </td>
                 
@@ -312,10 +317,26 @@ export default function Productos() {
                         <p className="text-xs font-semibold text-emerald-700 leading-snug">Precio de costo sin IVA. Se usará como base para el cálculo de márgenes.</p>
                      </div>
                      
-                     <div className="grid grid-cols-2 gap-5 w-full">
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full">
                         <div className="w-full">
-                           <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Stock Actual</label>
+                           <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Stock / Cantidad</label>
                            <input type="number" step="0.01" value={formData.stock_actual} onChange={e => setFormData({...formData, stock_actual: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 font-black text-xl text-center outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800" />
+                        </div>
+                        <div className="w-full">
+                           <label className="block text-xs font-black text-emerald-600 uppercase tracking-wider mb-1" title="Punto de Reorden">Stock Mínimo</label>
+                           <input type="number" step="0.01" value={formData.stock_minimo} onChange={e => setFormData({...formData, stock_minimo: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2.5 rounded-xl border border-emerald-200 font-bold text-lg text-center outline-none focus:ring-2 focus:ring-emerald-500 text-emerald-800 bg-emerald-50" />
+                        </div>
+                        <div className="w-full">
+                           <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">U.M. (Medida)</label>
+                           <select value={formData.unidad} onChange={e => setFormData({...formData, unidad: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 font-bold text-gray-800 text-center outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 cursor-pointer">
+                              <option value="Unidades">Unidades (U)</option>
+                              <option value="Kg">Kilogramos (Kg)</option>
+                              <option value="Gr">Gramos (Gr)</option>
+                              <option value="Lts">Litros (Lts)</option>
+                              <option value="Ml">Mililitros (Ml)</option>
+                              <option value="Mts">Metros (Mts)</option>
+                              <option value="Cajas">Cajas / Pack</option>
+                           </select>
                         </div>
                      </div>
                   </div>

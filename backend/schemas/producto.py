@@ -29,6 +29,8 @@ class ProductoBase(BaseModel):
     tasa_iva_id: int
     costo_neto: float = Field(default=0.0, ge=0)
     stock_actual: float = Field(default=0.0)
+    stock_minimo: float = Field(default=0.0)
+    unidad: str = "Unidades"
     activo: bool = True
 
 class ProductoCreate(ProductoBase):
@@ -44,6 +46,8 @@ class ProductoUpdate(BaseModel):
     tasa_iva_id: int | None = None
     costo_neto: float | None = None
     stock_actual: float | None = None
+    stock_minimo: float | None = None
+    unidad: str | None = None
     activo: bool | None = None
     precios_costum: List[ProductoPrecioCreate] | None = None
 
