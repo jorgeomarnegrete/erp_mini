@@ -13,6 +13,10 @@ export default function Clientes() {
   const [tiposResp, setTiposResp] = useState([]);
   const [listasPrecios, setListasPrecios] = useState([]);
   const [vendedores, setVendedores] = useState([]);
+  const [zonas, setZonas] = useState([]);
+
+  // Búsqueda Inteligente
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Catálogos API Pública Georef (Gobierno AR)
   const [provincias, setProvincias] = useState([]);
@@ -24,7 +28,7 @@ export default function Clientes() {
   
   const [formData, setFormData] = useState({
     id: null, razon_social: '', tipo_doc_id: '', documento: '',
-    tipo_resp_id: '', lista_precio_id: '', vendedor_id: '',
+    tipo_resp_id: '', lista_precio_id: '', vendedor_id: '', zona_id: '',
     nombre_contacto: '', telefono_contacto: '', email: '',
     telefono: '', provincia: '', localidad: '', direccion: '',
     observaciones: '', activo: true
@@ -35,13 +39,14 @@ export default function Clientes() {
   // 1. Carga Inicial de Toda la data
   const fetchAllData = async () => {
     try {
-      const [cliRes, tDocRes, tRespRes, lPRes, vendRes, provRes] = await Promise.all([
+      const [cliRes, tDocRes, tRespRes, lPRes, vendRes, provRes, zonRes] = await Promise.all([
         api.get('/api/clientes'),
         api.get('/api/tipos-doc'),
         api.get('/api/tipos-resp'),
         api.get('/api/listas-precios'),
         api.get('/api/vendedores'),
-        axios.get('https://apis.datos.gob.ar/georef/api/provincias?campos=nombre&max=100')
+        axios.get('https://apis.datos.gob.ar/georef/api/provincias?campos=nombre&max=100'),
+        api.get('/api/zonas')
       ]);
 
       setClientes(cliRes.data);
@@ -49,6 +54,7 @@ export default function Clientes() {
       setTiposResp(tRespRes.data);
       setListasPrecios(lPRes.data);
       setVendedores(vendRes.data);
+      setZonas(zonRes.data);
       
       // Ordenar alfabéticamente provincias
       const sortedProv = provRes.data.provincias.sort((a,b) => a.nombre.localeCompare(b.nombre));
@@ -85,7 +91,7 @@ export default function Clientes() {
   // Interfaz de Modal
   const getEmptyForm = () => ({
     id: null, razon_social: '', tipo_doc_id: tiposDoc[0]?.id || '', documento: '',
-    tipo_resp_id: tiposResp[0]?.id || '', lista_precio_id: '', vendedor_id: '',
+    tipo_resp_id: tiposResp[0]?.id || '', lista_precio_id: '', vendedor_id: '', zona_id: '',
     nombre_contacto: '', telefono_contacto: '', email: '', telefono: '',
     provincia: '', localidad: '', direccion: '', observaciones: '', activo: true
   });
@@ -118,6 +124,7 @@ export default function Clientes() {
       delete payload.id;
       if (payload.lista_precio_id === '') payload.lista_precio_id = null;
       if (payload.vendedor_id === '') payload.vendedor_id = null;
+      if (payload.zona_id === '') payload.zona_id = null;
 
       if (modalMode === 'create') {
         await api.post('/api/clientes', payload);
@@ -153,6 +160,24 @@ export default function Clientes() {
      </div>
   );
 
+  // Lógica de Filtrado Inteligente (Tokenizada)
+  const filteredClientes = clientes.filter(c => {
+    if (!searchTerm.trim()) return true;
+    
+    const tokens = searchTerm.toLowerCase().split(' ').filter(t => t.trim() !== '');
+    const searchString = `
+      ${c.razon_social || ''} 
+      ${c.documento || ''} 
+      ${c.nombre_contacto || ''} 
+      ${c.email || ''} 
+      ${c.localidad || ''}
+      ${c.provincia || ''}
+      ${c.zona?.nombre || ''}
+    `.toLowerCase();
+    
+    return tokens.every(token => searchString.includes(token));
+  });
+
   return (
     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden relative">
       <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-white flex items-center justify-between">
@@ -163,10 +188,22 @@ export default function Clientes() {
           <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Clientes</h2>
         </div>
         <div className="flex items-center space-x-4">
-          <span className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold shadow-sm">
-            {clientes.length} Cuentas Activas
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Buscar cliente, CUIT, loc..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all w-64 shadow-sm"
+            />
+          </div>
+          <span className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold shadow-sm whitespace-nowrap">
+            {filteredClientes.length} / {clientes.length} Cuentas
           </span>
-          <button onClick={openCreateModal} className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm">
+          <button onClick={openCreateModal} className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm whitespace-nowrap">
             <Plus className="w-5 h-5 mr-1" /> Nuevo Cliente
           </button>
         </div>
@@ -184,7 +221,7 @@ export default function Clientes() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100/60">
-            {clientes.map((c) => (
+            {filteredClientes.map((c) => (
               <tr key={c.id} className="hover:bg-indigo-50/30 transition-colors duration-200">
                 <td className="px-6 py-4">
                   <div className="flex flex-col">
@@ -220,6 +257,11 @@ export default function Clientes() {
                          <MapPin className="w-3 h-3 mr-1 text-emerald-500" /> {c.localidad}, {c.provincia}
                        </span>
                      )}
+                     {c.zona && (
+                       <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded mt-1 w-fit">
+                         Zona: {c.zona.nombre}
+                       </span>
+                     )}
                    </div>
                 </td>
 
@@ -241,9 +283,11 @@ export default function Clientes() {
                 </td>
               </tr>
             ))}
-            {clientes.length === 0 && (
+            {filteredClientes.length === 0 && (
                 <tr>
-                   <td colSpan="5" className="px-6 py-10 text-center text-gray-400 font-semibold italic">No existen clientes registrados en la base operativa.</td>
+                   <td colSpan="5" className="px-6 py-10 text-center text-gray-400 font-semibold italic">
+                     {clientes.length === 0 ? 'No existen clientes registrados en la base operativa.' : 'No se encontraron clientes que coincidan con tu búsqueda.'}
+                   </td>
                 </tr>
             )}
           </tbody>
@@ -379,9 +423,18 @@ export default function Clientes() {
                         </div>
                      </div>
                      
-                     <div>
-                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Dirección</label>
-                       <input type="text" value={formData.direccion} onChange={e => setFormData({...formData, direccion: e.target.value})} className="w-full px-3 py-2.5 rounded-lg border outline-none shadow-sm focus:border-indigo-500 font-medium" placeholder="Calle, Nº, Puerta..." />
+                     <div className="grid grid-cols-2 gap-4">
+                       <div>
+                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Dirección</label>
+                         <input type="text" value={formData.direccion} onChange={e => setFormData({...formData, direccion: e.target.value})} className="w-full px-3 py-2.5 rounded-lg border outline-none shadow-sm focus:border-indigo-500 font-medium" placeholder="Calle, Nº, Puerta..." />
+                       </div>
+                       <div>
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Zona de Entrega</label>
+                          <select value={formData.zona_id} onChange={e => setFormData({...formData, zona_id: parseInt(e.target.value) || ''})} className="w-full px-3 py-2.5 rounded-lg border outline-none shadow-sm focus:border-indigo-500 font-medium bg-white">
+                             <option value="">No Asignada</option>
+                             {zonas.filter(z => z.activa).map(z => <option key={z.id} value={z.id}>{z.nombre}</option>)}
+                          </select>
+                       </div>
                      </div>
 
                      <div>

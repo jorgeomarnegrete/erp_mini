@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from database import engine, get_db
 from models.user import Base, User, Menu
 from core.security import get_password_hash
-from routers import auth, users, tipo_resp, tipo_doc, lista_precio, vendedor, cliente, punto_venta, categoria, tasa_iva, producto, empresa, cotizacion, plantilla
+from routers import auth, users, tipo_resp, tipo_doc, lista_precio, vendedor, cliente, punto_venta, categoria, tasa_iva, producto, empresa, cotizacion, plantilla, proveedor, zona
 import models.tipo_resp
 import models.tipo_doc
 import models.lista_precio
@@ -18,6 +18,8 @@ import models.producto
 import models.empresa
 import models.cotizacion
 import models.plantilla
+import models.proveedor
+import models.zona
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -250,6 +252,41 @@ async def lifespan(app: FastAPI):
             db.add(m_plantillas)
             db.commit()
 
+    # Inyección Dinámica Módulo Compras y Proveedores
+    m_compras_exist = db.query(Menu).filter(Menu.nombre == "Compras").first()
+    if not m_compras_exist:
+        m_compras = Menu(nombre="Compras", icono="ShoppingCart", orden=4)
+        db.add(m_compras)
+        db.commit()
+        db.refresh(m_compras)
+        m_compras_exist = m_compras
+
+    m_prov_exist = db.query(Menu).filter(Menu.ruta == "/proveedores").first()
+    if not m_prov_exist:
+        m_prov = Menu(nombre="Proveedores", ruta="/proveedores", icono="Truck", parent_id=m_compras_exist.id, orden=1)
+        db.add(m_prov)
+        db.commit()
+        
+    # Auto-asignar a administradores si no lo tienen
+    admins = db.query(User).filter(User.is_admin == True).all()
+    for admin in admins:
+        admin_menus = [m.id for m in admin.menus]
+        added = False
+        if m_compras_exist.id not in admin_menus:
+            admin.menus.append(m_compras_exist)
+            added = True
+        if m_prov_exist and m_prov_exist.id not in admin_menus:
+            admin.menus.append(m_prov_exist)
+            added = True
+        elif not m_prov_exist:
+            # Pudo haber existido antes, lo busco de nuevo para asignar
+            m_p = db.query(Menu).filter(Menu.ruta == "/proveedores").first()
+            if m_p and m_p.id not in admin_menus:
+                admin.menus.append(m_p)
+                added = True
+        if added:
+            db.commit()
+
     if db.query(models.punto_venta.PuntoVenta).count() == 0:
         pv_inicial = models.punto_venta.PuntoVenta(numero=1, descripcion="Local - Casa Central", facturacion_electronica=True)
         db.add(pv_inicial)
@@ -295,6 +332,15 @@ async def lifespan(app: FastAPI):
         if m_archivos_ref:
             m_cat = Menu(nombre="Rubros / Categorías", ruta="/archivos/categorias", icono="Boxes", parent_id=m_archivos_ref.id, orden=7)
             db.add(m_cat)
+            db.commit()
+
+    # Inyectar Menú Dinámico Zonas si no existe
+    m_zonas_exist = db.query(Menu).filter(Menu.ruta == "/archivos/zonas").first()
+    if not m_zonas_exist:
+        parent = db.query(Menu).filter(Menu.nombre == "Archivos").first()
+        if parent:
+            m_zonas = Menu(nombre="Zonas de Entrega", ruta="/archivos/zonas", icono="MapPin", parent_id=parent.id, orden=8)
+            db.add(m_zonas)
             db.commit()
     
     # Inyectar usuario inicial
@@ -342,3 +388,5 @@ app.include_router(producto.router)
 app.include_router(empresa.router)
 app.include_router(cotizacion.router)
 app.include_router(plantilla.router)
+app.include_router(proveedor.router)
+app.include_router(zona.router)

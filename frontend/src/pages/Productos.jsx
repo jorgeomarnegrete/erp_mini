@@ -319,8 +319,8 @@ export default function Productos() {
                      
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full">
                         <div className="w-full">
-                           <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Stock / Cantidad</label>
-                           <input type="number" step="0.01" value={formData.stock_actual} onChange={e => setFormData({...formData, stock_actual: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 font-black text-xl text-center outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800" />
+                           <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1" title="El stock se rige por movimientos">Stock / Cantidad (Read-Only)</label>
+                           <input type="number" step="0.01" readOnly disabled value={formData.stock_actual} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-100 font-black text-xl text-center outline-none text-gray-500 cursor-not-allowed" />
                         </div>
                         <div className="w-full">
                            <label className="block text-xs font-black text-emerald-600 uppercase tracking-wider mb-1" title="Punto de Reorden">Stock Mínimo</label>

@@ -4,6 +4,7 @@ from schemas.tipo_doc import TipoDocResponse
 from schemas.tipo_resp import TipoRespResponse
 from schemas.lista_precio import ListaPrecioResponse
 from schemas.vendedor import VendedorResponse
+from schemas.zona import ZonaResponse
 
 class ClienteBase(BaseModel):
     razon_social: str
@@ -19,6 +20,7 @@ class ClienteBase(BaseModel):
     provincia: Optional[str] = None
     localidad: Optional[str] = None
     direccion: Optional[str] = None
+    zona_id: Optional[int] = None
     observaciones: Optional[str] = None
     activo: bool = True
 
@@ -39,6 +41,7 @@ class ClienteUpdate(BaseModel):
     provincia: str | None = None
     localidad: str | None = None
     direccion: str | None = None
+    zona_id: int | None = None
     observaciones: str | None = None
     activo: bool | None = None
 
@@ -50,6 +53,7 @@ class ClienteResponse(ClienteBase):
     tipo_resp: Optional[TipoRespResponse] = None
     lista_precio: Optional[ListaPrecioResponse] = None
     vendedor: Optional[VendedorResponse] = None
+    zona: Optional[ZonaResponse] = None
 
     class Config:
         from_attributes = True

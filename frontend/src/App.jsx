@@ -10,11 +10,13 @@ import Vendedores from './pages/Vendedores';
 import Clientes from './pages/Clientes';
 import PuntosVenta from './pages/PuntosVenta';
 import Categorias from './pages/Categorias';
+import Zonas from './pages/Zonas';
 import TasasIva from './pages/TasasIva';
 import Productos from './pages/Productos';
 import Cotizaciones from './pages/Cotizaciones';
 import Empresa from './pages/Empresa';
 import PlantillasDocumentos from './pages/PlantillasDocumentos';
+import Proveedores from './pages/Proveedores';
 import Dashboard from './pages/Dashboard';
 import Layout from './components/Layout';
 
@@ -96,8 +98,10 @@ function App() {
             <Route path="archivos/listas-precios" element={<ListasPrecios />} />
             <Route path="archivos/vendedores" element={<Vendedores />} />
             <Route path="archivos/categorias" element={<Categorias />} />
+            <Route path="archivos/zonas" element={<Zonas />} />
             <Route path="archivos/productos" element={<Productos />} />
             <Route path="clientes" element={<Clientes />} />
+            <Route path="proveedores" element={<Proveedores />} />
             <Route path="cotizaciones" element={<Cotizaciones />} />
             
             {/* Nueva Ruta Configuración Empresa y Diseño */}
