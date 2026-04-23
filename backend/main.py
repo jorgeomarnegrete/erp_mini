@@ -51,6 +51,16 @@ async def lifespan(app: FastAPI):
         db.add_all([m_users, m_config, m_plantillas, m_clientes, m_productos, m_pos, m_cotizaciones])
         db.commit()
     
+    # Inyectar Semilla Tipos de Responsable si tabla vacía
+    if db.query(models.tipo_resp.TipoResp).count() == 0:
+        db.add_all([
+            models.tipo_resp.TipoResp(nombre="IVA Responsable Inscripto", abreviatura="RI", codigo_arca="01"),
+            models.tipo_resp.TipoResp(nombre="IVA Sujeto Exento", abreviatura="EX", codigo_arca="04"),
+            models.tipo_resp.TipoResp(nombre="Consumidor Final", abreviatura="CF", codigo_arca="05"),
+            models.tipo_resp.TipoResp(nombre="Responsable Monotributo", abreviatura="MT", codigo_arca="06"),
+        ])
+        db.commit()
+
     # Inyectar Semilla Empresa si tabla vacía
     if db.query(models.empresa.Empresa).count() == 0:
         # Busca el ID de "Responsable Inscripto" o fallback 1 
@@ -73,16 +83,6 @@ async def lifespan(app: FastAPI):
             sitio_web="www.minegocio.com"
         )
         db.add(emp)
-        db.commit()
-        
-    # Inyectar Semilla Tipos de Responsable si tabla vacía
-    if db.query(models.tipo_resp.TipoResp).count() == 0:
-        db.add_all([
-            models.tipo_resp.TipoResp(nombre="IVA Responsable Inscripto", abreviatura="RI", codigo_arca="01"),
-            models.tipo_resp.TipoResp(nombre="IVA Sujeto Exento", abreviatura="EX", codigo_arca="04"),
-            models.tipo_resp.TipoResp(nombre="Consumidor Final", abreviatura="CF", codigo_arca="05"),
-            models.tipo_resp.TipoResp(nombre="Responsable Monotributo", abreviatura="MT", codigo_arca="06"),
-        ])
         db.commit()
 
     # Inyectar Menú Dinámico Tipos de Responsable si no existe

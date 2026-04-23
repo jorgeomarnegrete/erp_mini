@@ -5,43 +5,48 @@ services:
     image: postgres:15
     container_name: factu_db
     restart: always
+    env_file:
+      - .env.prod
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "5432:5432"
+    # No exponemos el puerto 5432 al exterior en producción por seguridad
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   backend:
     build:
       context: ./backend
+      dockerfile: Dockerfile.prod
+    image: factu_backend_prod
     container_name: factu_backend
     restart: always
     ports:
       - "8000:8000"
     depends_on:
       - db
+    env_file:
+      - .env.prod
     environment:
       - DATABASE_URL=${DATABASE_URL}
-    volumes:
-      - ./backend:/app
-
+    # No montamos volúmenes locales de código en producción
+    
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        - VITE_API_URL=${VITE_API_URL}
+    image: factu_frontend_prod
     container_name: factu_frontend
     restart: always
     ports:
-      - "5173:5173"
+      - "80:80"
     depends_on:
       - backend
-    environment:
-      - VITE_API_URL=${VITE_API_URL}
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+    env_file:
+      - .env.prod
 
 volumes:
   postgres_data:

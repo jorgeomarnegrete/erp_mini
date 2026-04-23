@@ -68,7 +68,7 @@ export default function Layout() {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link to="/" className="flex-shrink-0 flex items-center shrink-0 mr-8">
-                <span className="text-2xl font-black text-indigo-600 tracking-tighter hover:text-indigo-800 transition-colors">FACTU</span>
+                <span className="text-2xl font-black text-indigo-600 tracking-tighter hover:text-indigo-800 transition-colors">GestCom</span>
               </Link>
               <div className="hidden sm:flex space-x-2">
                 {userMenuTree.map(menu => (
