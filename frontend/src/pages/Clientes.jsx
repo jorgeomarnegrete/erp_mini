@@ -3,6 +3,17 @@ import axios from 'axios';
 import { useAuth } from '../App';
 import { UserCheck, Edit, Trash2, Plus, CheckCircle2, XCircle, Search, Save, X, Building2, MapPin, Phone, Hash } from 'lucide-react';
 
+const normalizeString = (str) => {
+  return str ? str.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim() : "";
+};
+
+const getMatchingValue = (dbVal, optionsArray) => {
+  if (!dbVal) return "";
+  const normDb = normalizeString(dbVal);
+  const match = optionsArray.find(o => normalizeString(o.nombre) === normDb);
+  return match ? match.nombre : dbVal;
+};
+
 export default function Clientes() {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,9 +89,11 @@ export default function Clientes() {
         return;
       }
       try {
-        const munRes = await axios.get(`https://apis.datos.gob.ar/georef/api/municipios?provincia=${provinciaNombre}&campos=nombre&max=1000`);
-        const sortedMun = munRes.data.municipios.sort((a,b) => a.nombre.localeCompare(b.nombre));
-        setLocalidades(sortedMun);
+        const locRes = await axios.get(`https://apis.datos.gob.ar/georef/api/localidades?provincia=${provinciaNombre}&campos=nombre&max=1000`);
+        const uniqueNames = Array.from(new Set(locRes.data.localidades.map(l => l.nombre)));
+        const uniqueLocs = uniqueNames.map(name => ({nombre: name}));
+        const sortedLoc = uniqueLocs.sort((a,b) => a.nombre.localeCompare(b.nombre));
+        setLocalidades(sortedLoc);
       } catch (err) {
         console.error("Georef API Error:", err);
       }
@@ -409,14 +422,14 @@ export default function Clientes() {
                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Provincia (API Georef)</label>
-                          <select value={formData.provincia} onChange={e => setFormData({...formData, provincia: e.target.value, localidad: ''})} className="w-full px-3 py-2.5 rounded-lg border focus:ring-2 outline-none font-medium shadow-sm">
+                          <select value={getMatchingValue(formData.provincia, provincias)} onChange={e => setFormData({...formData, provincia: e.target.value, localidad: ''})} className="w-full px-3 py-2.5 rounded-lg border focus:ring-2 outline-none font-medium shadow-sm">
                             <option value="">Seleccionar...</option>
                             {provincias.map(p => <option key={p.nombre} value={p.nombre}>{p.nombre}</option>)}
                           </select>
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Localidad/Municipio</label>
-                          <select disabled={!formData.provincia} value={formData.localidad} onChange={e => setFormData({...formData, localidad: e.target.value})} className="w-full px-3 py-2.5 rounded-lg border focus:ring-2 outline-none font-medium shadow-sm disabled:bg-gray-100 disabled:text-gray-400">
+                          <select disabled={!formData.provincia} value={getMatchingValue(formData.localidad, localidades)} onChange={e => setFormData({...formData, localidad: e.target.value})} className="w-full px-3 py-2.5 rounded-lg border focus:ring-2 outline-none font-medium shadow-sm disabled:bg-gray-100 disabled:text-gray-400">
                             <option value="">{formData.provincia ? 'Elegir Ciudad...' : 'Requiere Provincia'}</option>
                             {localidades.map(m => <option key={m.nombre} value={m.nombre}>{m.nombre}</option>)}
                           </select>

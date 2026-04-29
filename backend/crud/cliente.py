@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from models.cliente import Cliente
 from schemas.cliente import ClienteCreate, ClienteUpdate
 
-def get_all(db: Session, skip: int = 0, limit: int = 500):
+def get_all(db: Session, skip: int = 0, limit: int = 10000):
     # La validación lazy="joined" en models/cliente.py auto-carga las relaciones subyacentes
     return db.query(Cliente).order_by(Cliente.id.asc()).offset(skip).limit(limit).all()
 
