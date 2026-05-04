@@ -68,9 +68,10 @@ export default function Proveedores() {
         return;
       }
       try {
-        const munRes = await axios.get(`https://apis.datos.gob.ar/georef/api/municipios?provincia=${provinciaNombre}&campos=nombre&max=1000`);
-        const sortedMun = munRes.data.municipios.sort((a,b) => a.nombre.localeCompare(b.nombre));
-        setLocalidades(sortedMun);
+        const locRes = await axios.get(`https://apis.datos.gob.ar/georef/api/localidades?provincia=${provinciaNombre}&campos=nombre&max=5000`);
+        const uniqueNombres = Array.from(new Set(locRes.data.localidades.map(l => l.nombre)));
+        const sortedLocs = uniqueNombres.map(nombre => ({ nombre })).sort((a,b) => a.nombre.localeCompare(b.nombre));
+        setLocalidades(sortedLocs);
       } catch (err) {
         console.error("Georef API Error:", err);
       }
