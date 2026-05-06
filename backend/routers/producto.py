@@ -50,3 +50,20 @@ async def delete_producto(record_id: int, current_user: User = Depends(get_curre
         
     crud_prod.delete(db=db, db_record=db_record)
     return None
+
+@router.get("/{record_id}/stock-disponible")
+async def get_stock_disponible(record_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Calcula al vuelo el stock real disponible restando la mercadería comprometida en pedidos"""
+    db_record = crud_prod.get_by_id(db, record_id=record_id)
+    if not db_record:
+        raise HTTPException(status_code=404, detail="Producto Inexistente.")
+        
+    from crud import pedido as crud_pedido
+    comprometido = crud_pedido.get_stock_comprometido(db, producto_id=record_id)
+    
+    return {
+        "producto_id": record_id,
+        "stock_actual": db_record.stock_actual,
+        "comprometido": comprometido,
+        "disponible": db_record.stock_actual - comprometido
+    }

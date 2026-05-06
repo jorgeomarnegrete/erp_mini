@@ -14,6 +14,7 @@ import Zonas from './pages/Zonas';
 import TasasIva from './pages/TasasIva';
 import Productos from './pages/Productos';
 import Cotizaciones from './pages/Cotizaciones';
+import Pedidos from './pages/Pedidos';
 import Empresa from './pages/Empresa';
 import PlantillasDocumentos from './pages/PlantillasDocumentos';
 import Proveedores from './pages/Proveedores';
@@ -104,6 +105,7 @@ function App() {
             <Route path="clientes" element={<Clientes />} />
             <Route path="proveedores" element={<Proveedores />} />
             <Route path="cotizaciones" element={<Cotizaciones />} />
+            <Route path="pedidos" element={<Pedidos />} />
             
             {/* Módulo Stock */}
             <Route path="stock/ajustes" element={<AjustesStock />} />

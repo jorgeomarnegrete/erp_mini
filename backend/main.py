@@ -21,6 +21,8 @@ import models.plantilla
 import models.proveedor
 import models.zona
 import models.stk_mov
+import models.pedido
+from routers import pedidos
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,8 +50,9 @@ async def lifespan(app: FastAPI):
         m_cotizaciones = Menu(nombre="Cotizaciones", ruta="/cotizaciones", icono="FileSpreadsheet", parent_id=m_ventas.id, orden=1)
         m_pos = Menu(nombre="Punto de Venta", ruta="/pos", icono="CreditCard", parent_id=m_ventas.id, orden=2)
         m_plantillas = Menu(nombre="Plantillas PDF", ruta="/plantillas", icono="Code2", parent_id=m_admin.id, orden=3)
+        m_pedidos = Menu(nombre="Pedidos", ruta="/pedidos", icono="ClipboardList", parent_id=m_ventas.id, orden=3)
         
-        db.add_all([m_users, m_config, m_plantillas, m_clientes, m_productos, m_pos, m_cotizaciones])
+        db.add_all([m_users, m_config, m_plantillas, m_clientes, m_productos, m_pos, m_cotizaciones, m_pedidos])
         db.commit()
     
     # Inyectar Semilla Tipos de Responsable si tabla vacía
@@ -314,6 +317,18 @@ async def lifespan(app: FastAPI):
                 admin.menus.append(m_a)
                 added = True
 
+        m_pedidos_exist = db.query(Menu).filter(Menu.ruta == "/pedidos").first()
+        if not m_pedidos_exist:
+            m_v_ref = db.query(Menu).filter(Menu.nombre == "Ventas").first()
+            if m_v_ref:
+                m_pedidos_exist = Menu(nombre="Pedidos", ruta="/pedidos", icono="ClipboardList", parent_id=m_v_ref.id, orden=3)
+                db.add(m_pedidos_exist)
+                db.commit()
+                db.refresh(m_pedidos_exist)
+        if m_pedidos_exist and m_pedidos_exist.id not in admin_menus:
+            admin.menus.append(m_pedidos_exist)
+            added = True
+
         if added:
             db.commit()
 
@@ -421,3 +436,4 @@ app.include_router(plantilla.router)
 app.include_router(proveedor.router)
 app.include_router(zona.router)
 app.include_router(stk_mov.router)
+app.include_router(pedidos.router)
