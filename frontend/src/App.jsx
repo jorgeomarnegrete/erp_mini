@@ -18,6 +18,7 @@ import Empresa from './pages/Empresa';
 import PlantillasDocumentos from './pages/PlantillasDocumentos';
 import Proveedores from './pages/Proveedores';
 import Dashboard from './pages/Dashboard';
+import AjustesStock from './pages/AjustesStock';
 import Layout from './components/Layout';
 
 export const AuthContext = createContext();
@@ -103,6 +104,9 @@ function App() {
             <Route path="clientes" element={<Clientes />} />
             <Route path="proveedores" element={<Proveedores />} />
             <Route path="cotizaciones" element={<Cotizaciones />} />
+            
+            {/* Módulo Stock */}
+            <Route path="stock/ajustes" element={<AjustesStock />} />
             
             {/* Nueva Ruta Configuración Empresa y Diseño */}
             <Route path="config/empresa" element={user?.is_admin ? <Empresa /> : <Navigate to="/" />} />

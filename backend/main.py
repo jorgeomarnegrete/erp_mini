@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from database import engine, get_db
 from models.user import Base, User, Menu
 from core.security import get_password_hash
-from routers import auth, users, tipo_resp, tipo_doc, lista_precio, vendedor, cliente, punto_venta, categoria, tasa_iva, producto, empresa, cotizacion, plantilla, proveedor, zona
+from routers import auth, users, tipo_resp, tipo_doc, lista_precio, vendedor, cliente, punto_venta, categoria, tasa_iva, producto, empresa, cotizacion, plantilla, proveedor, zona, stk_mov
 import models.tipo_resp
 import models.tipo_doc
 import models.lista_precio
@@ -20,6 +20,7 @@ import models.cotizacion
 import models.plantilla
 import models.proveedor
 import models.zona
+import models.stk_mov
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -266,6 +267,21 @@ async def lifespan(app: FastAPI):
         m_prov = Menu(nombre="Proveedores", ruta="/proveedores", icono="Truck", parent_id=m_compras_exist.id, orden=1)
         db.add(m_prov)
         db.commit()
+
+    # Inyección Dinámica Módulo Stock y Ajustes
+    m_stock_exist = db.query(Menu).filter(Menu.nombre == "Stock").first()
+    if not m_stock_exist:
+        m_stock = Menu(nombre="Stock", icono="PackageOpen", orden=5)
+        db.add(m_stock)
+        db.commit()
+        db.refresh(m_stock)
+        m_stock_exist = m_stock
+
+    m_ajuste_exist = db.query(Menu).filter(Menu.ruta == "/stock/ajustes").first()
+    if not m_ajuste_exist:
+        m_ajuste = Menu(nombre="Ajuste de stock", ruta="/stock/ajustes", icono="ArrowRightLeft", parent_id=m_stock_exist.id, orden=1)
+        db.add(m_ajuste)
+        db.commit()
         
     # Auto-asignar a administradores si no lo tienen
     admins = db.query(User).filter(User.is_admin == True).all()
@@ -284,6 +300,20 @@ async def lifespan(app: FastAPI):
             if m_p and m_p.id not in admin_menus:
                 admin.menus.append(m_p)
                 added = True
+        
+        # Asignar menú de Stock si no lo tienen
+        if m_stock_exist and m_stock_exist.id not in admin_menus:
+            admin.menus.append(m_stock_exist)
+            added = True
+        if m_ajuste_exist and m_ajuste_exist.id not in admin_menus:
+            admin.menus.append(m_ajuste_exist)
+            added = True
+        elif not m_ajuste_exist:
+            m_a = db.query(Menu).filter(Menu.ruta == "/stock/ajustes").first()
+            if m_a and m_a.id not in admin_menus:
+                admin.menus.append(m_a)
+                added = True
+
         if added:
             db.commit()
 
@@ -390,3 +420,4 @@ app.include_router(cotizacion.router)
 app.include_router(plantilla.router)
 app.include_router(proveedor.router)
 app.include_router(zona.router)
+app.include_router(stk_mov.router)
