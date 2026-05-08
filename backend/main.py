@@ -22,7 +22,8 @@ import models.proveedor
 import models.zona
 import models.stk_mov
 import models.pedido
-from routers import pedidos
+import models.remito
+from routers import pedidos, remitos
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -51,8 +52,9 @@ async def lifespan(app: FastAPI):
         m_pos = Menu(nombre="Punto de Venta", ruta="/pos", icono="CreditCard", parent_id=m_ventas.id, orden=2)
         m_plantillas = Menu(nombre="Plantillas PDF", ruta="/plantillas", icono="Code2", parent_id=m_admin.id, orden=3)
         m_pedidos = Menu(nombre="Pedidos", ruta="/pedidos", icono="ClipboardList", parent_id=m_ventas.id, orden=3)
+        m_remitos = Menu(nombre="Remitos", ruta="/remitos", icono="Truck", parent_id=m_ventas.id, orden=4)
         
-        db.add_all([m_users, m_config, m_plantillas, m_clientes, m_productos, m_pos, m_cotizaciones, m_pedidos])
+        db.add_all([m_users, m_config, m_plantillas, m_clientes, m_productos, m_pos, m_cotizaciones, m_pedidos, m_remitos])
         db.commit()
     
     # Inyectar Semilla Tipos de Responsable si tabla vacía
@@ -159,8 +161,9 @@ async def lifespan(app: FastAPI):
         m_clientes_update.orden = 3 # POS=2, Coti=1
         db.commit()
 
-    # Semilla Plantilla HTML de Cotización Si no Existe
-    if db.query(models.plantilla.PlantillaDocumento).count() == 0:
+    # Semilla Plantillas HTML Si no Existen
+    # 1. Cotización
+    if db.query(models.plantilla.PlantillaDocumento).filter(models.plantilla.PlantillaDocumento.tipo_documento == "COTIZACION").count() == 0:
         html_base = """
         <html>
         <head>
@@ -197,7 +200,7 @@ async def lifespan(app: FastAPI):
                  <td style="width:50%; vertical-align: top;" class="title-box">
                     <h1>COTIZACIÓN</h1>
                     <strong>Nº {{ "%04d" | format(cotizacion.punto_venta.numero) }}-{{ "%08d" | format(cotizacion.numero_comprobante) }}</strong><br>
-                    Fecha: {{ cotizacion.fecha_emision.strftime('%d/%m/%Y') }}
+                    Fecha: {{ cotizacion.fecha_emision.strftime('%d/%m/%Y') if cotizacion.fecha_emision else '' }}
                  </td>
               </tr></table>
            </div>
@@ -232,7 +235,7 @@ async def lifespan(app: FastAPI):
            <div class="totals">
               <div>Subtotal: $ {{ "%.2f"|format(cotizacion.subtotal) }}</div>
               <div>Descuentos: $ {{ "%.2f"|format(cotizacion.descuento_monto) }}</div>
-              <div class="gran-total">Total: $ {{ "%.2f"|format(cotizacion.total) }}</div>
+              <div class="gran-total" style="font-size: 18px; font-weight: bold;">Total: $ {{ "%.2f"|format(cotizacion.total) }}</div>
            </div>
            <div style="clear: both;"></div>
            
@@ -243,9 +246,103 @@ async def lifespan(app: FastAPI):
         </body>
         </html>
         """
-        p_coti = models.plantilla.PlantillaDocumento(nombre="Diseño Estándar", tipo_documento="COTIZACION", codigo_html=html_base, activa=True)
+        p_coti = models.plantilla.PlantillaDocumento(nombre="Cotización Estándar", tipo_documento="COTIZACION", codigo_html=html_base, activa=True)
         db.add(p_coti)
         db.commit()
+
+    # 2. Remito
+    p_remito_exist = db.query(models.plantilla.PlantillaDocumento).filter(models.plantilla.PlantillaDocumento.tipo_documento == "REMITO").first()
+    
+    html_remito = """
+    <html>
+    <head>
+      <style>
+         body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; }
+         .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 20px; }
+         .logo { max-width: 150px; max-height: 80px; }
+         .empresa-datos { text-align: left; font-size: 11px; color: #555; margin-left: 20px; }
+         .title-box { text-align: right; }
+         .title-box h1 { margin: 0; color: #111; font-size: 24px; }
+         .cliente-box { margin-top: 20px; padding: 15px; border: 1px solid #ddd; background: #fafafa; border-radius: 5px; }
+         table.items { width: 100%; border-collapse: collapse; margin-top: 30px; font-size: 11px; }
+         table.items th { background-color: #222; color: #fff; padding: 10px; text-align: left; }
+         table.items td { border-bottom: 1px solid #eee; padding: 10px; }
+         .totals { margin-top: 30px; width: 40%; float: right; border-top: 2px solid #333; padding-top: 10px; text-align: right; }
+         .totals div { margin-bottom: 5px; font-size: 13px; }
+         .totals .gran-total { font-size: 18px; font-weight: bold; color: #000; }
+      </style>
+    </head>
+    <body>
+       <div class="header">
+          <table style="width: 100%;"><tr>
+             <td style="width:50%; vertical-align: top;">
+                {% if empresa.logo_base64 %}
+                  <img class="logo" src="{{ empresa.logo_base64 }}" />
+                {% endif %}
+                <div class="empresa-datos">
+                   <strong>{{ empresa.razon_social }}</strong><br>
+                   CUIT: {{ empresa.cuit or '-' }}<br>
+                   Dir: {{ empresa.domicilio_comercial or '-' }}<br>
+                   Tel: {{ empresa.telefono or '-' }}<br>
+                </div>
+             </td>
+             <td style="width:50%; vertical-align: top;" class="title-box">
+                <h1>REMITO</h1>
+                <strong>Nº {{ "%04d" | format(remito.punto_venta.numero) }}-{{ "%08d" | format(remito.numero_comprobante) }}</strong><br>
+                Fecha: {{ remito.fecha.strftime('%d/%m/%Y') if remito.fecha else '' }}
+             </td>
+          </tr></table>
+       </div>
+       
+       <div class="cliente-box">
+          <strong>Señor/es: {{ cliente.razon_social }}</strong><br>
+          Documento: {{ cliente.documento }} ({{ cliente.tipo_resp.nombre if cliente.tipo_resp else '' }})<br>
+          Domicilio: {{ cliente.direccion or '-' }}, {{ cliente.localidad or '' }}
+       </div>
+       
+       <table class="items">
+          <thead>
+             <tr>
+                <th style="width: 80px;">Cant.</th>
+                <th>Descripción</th>
+                <th style="text-align: right; width: 100px;">Unitario</th>
+                <th style="text-align: right; width: 100px;">Subtotal</th>
+             </tr>
+          </thead>
+          <tbody>
+             {% for det in detalles %}
+             <tr>
+                <td>{{ "%.2f"|format(det.cantidad) }}</td>
+                <td>{{ det.producto.nombre }}</td>
+                <td style="text-align: right;">$ {{ "%.2f"|format(det.precio_unitario) }}</td>
+                <td style="text-align: right;">$ {{ "%.2f"|format(det.subtotal) }}</td>
+             </tr>
+             {% endfor %}
+          </tbody>
+       </table>
+       
+       <div class="totals">
+          <div class="gran-total">Total: $ {{ "%.2f"|format(remito.total) }}</div>
+       </div>
+       <div style="clear: both;"></div>
+       
+       <div style="margin-top: 50px; font-size: 10px; color: #777; text-align: center;">
+          {{ remito.observaciones if remito.observaciones else '' }}<br><br>
+          Documento no válido como factura.<br>
+          <i>Generado por Factu ERP Avanzado v2.0</i>
+       </div>
+    </body>
+    </html>
+    """
+    
+    if not p_remito_exist:
+        p_remito = models.plantilla.PlantillaDocumento(nombre="Remito Estándar", tipo_documento="REMITO", codigo_html=html_remito, activa=True)
+        db.add(p_remito)
+    else:
+        # Forzar actualización de la plantilla si ya existe pero está rota
+        p_remito_exist.codigo_html = html_remito
+    
+    db.commit()
 
     # Inyección Dinámica Menú Plantillas si no existe
     m_plantillas_exist = db.query(Menu).filter(Menu.ruta == "/plantillas").first()
@@ -327,6 +424,18 @@ async def lifespan(app: FastAPI):
                 db.refresh(m_pedidos_exist)
         if m_pedidos_exist and m_pedidos_exist.id not in admin_menus:
             admin.menus.append(m_pedidos_exist)
+            added = True
+
+        m_remitos_exist = db.query(Menu).filter(Menu.ruta == "/remitos").first()
+        if not m_remitos_exist:
+            m_v_ref = db.query(Menu).filter(Menu.nombre == "Ventas").first()
+            if m_v_ref:
+                m_remitos_exist = Menu(nombre="Remitos", ruta="/remitos", icono="Truck", parent_id=m_v_ref.id, orden=4)
+                db.add(m_remitos_exist)
+                db.commit()
+                db.refresh(m_remitos_exist)
+        if m_remitos_exist and m_remitos_exist.id not in admin_menus:
+            admin.menus.append(m_remitos_exist)
             added = True
 
         if added:
@@ -437,3 +546,4 @@ app.include_router(proveedor.router)
 app.include_router(zona.router)
 app.include_router(stk_mov.router)
 app.include_router(pedidos.router)
+app.include_router(remitos.router)

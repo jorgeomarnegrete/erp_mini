@@ -15,6 +15,7 @@ import TasasIva from './pages/TasasIva';
 import Productos from './pages/Productos';
 import Cotizaciones from './pages/Cotizaciones';
 import Pedidos from './pages/Pedidos';
+import Remitos from './pages/Remitos';
 import Empresa from './pages/Empresa';
 import PlantillasDocumentos from './pages/PlantillasDocumentos';
 import Proveedores from './pages/Proveedores';
@@ -106,6 +107,7 @@ function App() {
             <Route path="proveedores" element={<Proveedores />} />
             <Route path="cotizaciones" element={<Cotizaciones />} />
             <Route path="pedidos" element={<Pedidos />} />
+            <Route path="remitos" element={<Remitos />} />
             
             {/* Módulo Stock */}
             <Route path="stock/ajustes" element={<AjustesStock />} />

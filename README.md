@@ -76,6 +76,7 @@ Para agregar un nuevo módulo al menú, se debe realizar mediante un script de m
 - **Cotizaciones:** Generación de presupuestos con exportación a PDF personalizada.
 - **Punto de Venta (POS):** Interfaz ágil para facturación rápida.
 - **Pedidos:** Seguimiento de pedidos de clientes y validación de stock comprometido.
+- **Remitos:** Gestión de entregas de mercadería con trazabilidad completa. Permite la carga manual o automática desde Pedidos (importando saldos pendientes), actualización dinámica del estado del pedido (Parcial/Completado), control opcional de stock físico e **impresión de comprobantes en PDF**. Soporta numeración correlativa legal por Punto de Venta.
 
 ### 📦 Gestión de Inventario (Stock)
 - **Ajustes de Stock:** Movimientos de entrada y salida manuales.
