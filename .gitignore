@@ -20,6 +20,7 @@ env/
 *.swo
 .DS_Store
 Thumbs.db
+migrate/
 
 # Scripts de Backup y archivos sensibles
 back.ps1

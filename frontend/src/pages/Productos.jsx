@@ -5,6 +5,7 @@ import { Package, Edit, Trash2, Plus, X, Search, Tags, Calculator, PercentCircle
 export default function Productos() {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const { api } = useAuth();
   
   // Catálogos para listboxes
@@ -143,6 +144,13 @@ export default function Productos() {
     }
   };
 
+  const filteredProductos = productos.filter((p) => {
+    if (!searchTerm.trim()) return true;
+    const tokens = searchTerm.toLowerCase().split(/\s+/).filter(t => t);
+    const textToSearch = `${p.codigo_interno} ${p.nombre} ${p.categoria.nombre} ${p.codigo_barras || ''}`.toLowerCase();
+    return tokens.every((token) => textToSearch.includes(token));
+  });
+
   if (loading) return (
      <div className="flex flex-col justify-center items-center h-64 text-indigo-600">
        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
@@ -159,9 +167,23 @@ export default function Productos() {
           </div>
           <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Productos</h2>
         </div>
+
+        <div className="flex-1 max-w-md mx-8 relative group">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-indigo-400 group-focus-within:text-indigo-600 transition-colors" />
+          </div>
+          <input
+            type="text"
+            placeholder="Buscar por código, nombre o rubro..."
+            className="block w-full pl-11 pr-4 py-2.5 bg-white border-2 border-indigo-100 rounded-xl text-sm font-bold placeholder-indigo-300 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all shadow-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
         <div className="flex items-center space-x-4">
           <span className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold shadow-sm border border-indigo-200">
-            {productos.length} SKUs Enlistados
+            {filteredProductos.length} de {productos.length} SKUs
           </span>
           <button onClick={openCreateModal} className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-bold transition-all shadow-md">
             <Plus className="w-5 h-5 mr-1" /> Nuevo Producto  
@@ -181,7 +203,7 @@ export default function Productos() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100/60">
-            {productos.map((prod) => (
+            {filteredProductos.map((prod) => (
               <tr key={prod.id} className="hover:bg-indigo-50/40 transition-colors duration-200">
                 <td className="px-6 py-4">
                   <div className="flex flex-col">
@@ -239,9 +261,11 @@ export default function Productos() {
                 </td>
               </tr>
             ))}
-            {productos.length === 0 && (
+            {filteredProductos.length === 0 && (
                 <tr>
-                   <td colSpan="5" className="px-6 py-12 text-center text-gray-400 font-semibold text-lg italic">No hay productos registrados.</td>
+                   <td colSpan="5" className="px-6 py-12 text-center text-gray-400 font-semibold text-lg italic">
+                     {searchTerm ? 'No se encontraron productos para esta búsqueda.' : 'No hay productos registrados.'}
+                   </td>
                 </tr>
             )}
           </tbody>
