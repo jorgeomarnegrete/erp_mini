@@ -91,4 +91,25 @@ def get_pedidos_pendientes_cliente(db: Session, cliente_id: int):
         Pedido.cliente_id == cliente_id,
         Pedido.estado.in_(["Pendiente", "Parcial"])
     ).all()
-    return pedidos
+from models.cliente import Cliente
+from typing import List
+
+def get_remitos_para_asignar(db: Session, zona_ids: List[int]):
+    """Obtiene remitos sin transporte filtrados por múltiples zonas de entrega"""
+    query = db.query(Remito).join(Cliente).filter(
+        Remito.transporte_id == None,
+        Remito.descuenta_stock == False
+    )
+    
+    if zona_ids:
+        query = query.filter(Cliente.zona_id.in_(zona_ids))
+        
+    return query.order_by(Remito.fecha.desc()).all()
+
+def bulk_assign_transporte(db: Session, remito_ids: List[int], transporte_id: int):
+    """Asigna un transporte a múltiples remitos de una vez"""
+    remitos = db.query(Remito).filter(Remito.id.in_(remito_ids)).all()
+    for remito in remitos:
+        remito.transporte_id = transporte_id
+    db.commit()
+    return remitos

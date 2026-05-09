@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Query
 from sqlalchemy.orm import Session
 from typing import List
 
 from database import get_db
 from models.user import User
-from schemas.remito import RemitoCreate, RemitoResponse
+from schemas.remito import RemitoCreate, RemitoResponse, RemitoBulkAssign
 from schemas.pedido import PedidoResponse
 from crud import remito as crud_remito
 from crud.empresa import get_empresa
@@ -75,3 +75,25 @@ async def export_pdf(remito_id: int, current_user: User = Depends(get_current_us
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error al generar PDF: {str(e)}")
+
+@router.get("/asignacion/pendientes", response_model=List[RemitoResponse])
+async def read_remitos_para_asignar(
+    zona_ids: List[int] = Query(None), 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Obtiene remitos listos para ser asignados a un transporte, filtrados por zonas"""
+    return crud_remito.get_remitos_para_asignar(db, zona_ids=zona_ids)
+
+@router.post("/asignacion/bulk-transporte", response_model=List[RemitoResponse])
+async def assign_bulk_transporte(
+    data: RemitoBulkAssign, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Asigna un transporte a una lista de remitos"""
+    try:
+        return crud_remito.bulk_assign_transporte(db, remito_ids=data.remito_ids, transporte_id=data.transporte_id)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))

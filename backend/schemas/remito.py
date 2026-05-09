@@ -50,3 +50,7 @@ class RemitoResponse(RemitoBase):
 
     class Config:
         from_attributes = True
+
+class RemitoBulkAssign(BaseModel):
+    remito_ids: List[int]
+    transporte_id: int

@@ -21,14 +21,29 @@ import models.plantilla
 import models.proveedor
 import models.zona
 import models.stk_mov
-import models.pedido
 import models.remito
-from routers import pedidos, remitos
+import models.transporte
+import models.carga_preparacion
+from routers import pedidos, remitos, transporte, carga_preparacion, logistica_control
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Se ejecuta al iniciar: Crear tablas si no existen
     Base.metadata.create_all(bind=engine)
+    
+    # Auto-migración: Agregar transporte_id a remitos si no existe
+    from sqlalchemy import text
+    db = next(get_db())
+    try:
+        # PostgreSQL soporta IF NOT EXISTS para columnas en versiones recientes, o podemos usar un check manual
+        # Para ser seguros en todas las versiones, intentamos el alter y capturamos si ya existe o usamos el check de Postgres
+        db.execute(text("ALTER TABLE remitos ADD COLUMN IF NOT EXISTS transporte_id INTEGER REFERENCES transportes(id)"))
+        db.execute(text("ALTER TABLE remitos ADD COLUMN IF NOT EXISTS stock_procesado BOOLEAN DEFAULT FALSE"))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        # Si falla por sintaxis de IF NOT EXISTS, es probable que ya exista o sea una versión vieja
+        pass
     
     # Inyectar menús de prueba si no existen
     db = next(get_db())
@@ -441,6 +456,70 @@ async def lifespan(app: FastAPI):
         if added:
             db.commit()
 
+    # Inyección Dinámica Módulo Logística
+    m_logistica_exist = db.query(Menu).filter(Menu.nombre == "Logística").first()
+    if not m_logistica_exist:
+        m_logistica = Menu(nombre="Logística", icono="Truck", orden=6)
+        db.add(m_logistica)
+        db.commit()
+        db.refresh(m_logistica)
+        m_logistica_exist = m_logistica
+
+    m_transporte_menu_exist = db.query(Menu).filter(Menu.ruta == "/transportes").first()
+    if not m_transporte_menu_exist:
+        m_transporte_menu = Menu(nombre="Transportes", ruta="/transportes", icono="Container", parent_id=m_logistica_exist.id, orden=1)
+        db.add(m_transporte_menu)
+        db.commit()
+        db.refresh(m_transporte_menu)
+        m_transporte_menu_exist = m_transporte_menu
+
+    m_asignacion_menu_exist = db.query(Menu).filter(Menu.ruta == "/logistica/asignacion").first()
+    if not m_asignacion_menu_exist:
+        m_asignacion_menu = Menu(nombre="Asignación de Cargas", ruta="/logistica/asignacion", icono="ClipboardCheck", parent_id=m_logistica_exist.id, orden=2)
+        db.add(m_asignacion_menu)
+        db.commit()
+        db.refresh(m_asignacion_menu)
+        m_asignacion_menu_exist = m_asignacion_menu
+
+    m_preparacion_menu_exist = db.query(Menu).filter(Menu.ruta == "/logistica/preparacion").first()
+    if not m_preparacion_menu_exist:
+        m_preparacion_menu = Menu(nombre="Preparación de Carga", ruta="/logistica/preparacion", icono="PackageCheck", parent_id=m_logistica_exist.id, orden=3)
+        db.add(m_preparacion_menu)
+        db.commit()
+        db.refresh(m_preparacion_menu)
+        m_preparacion_menu_exist = m_preparacion_menu
+
+    m_control_menu_exist = db.query(Menu).filter(Menu.ruta == "/logistica/control").first()
+    if not m_control_menu_exist:
+        m_control_menu = Menu(nombre="Control de Despacho", ruta="/logistica/control", icono="ScanBarcode", parent_id=m_logistica_exist.id, orden=4)
+        db.add(m_control_menu)
+        db.commit()
+        db.refresh(m_control_menu)
+        m_control_menu_exist = m_control_menu
+
+    # Asignar a administradores
+    admins = db.query(User).filter(User.is_admin == True).all()
+    for admin in admins:
+        admin_menus = [m.id for m in admin.menus]
+        added_log = False
+        if m_logistica_exist.id not in admin_menus:
+            admin.menus.append(m_logistica_exist)
+            added_log = True
+        if m_transporte_menu_exist.id not in admin_menus:
+            admin.menus.append(m_transporte_menu_exist)
+            added_log = True
+        if m_asignacion_menu_exist.id not in admin_menus:
+            admin.menus.append(m_asignacion_menu_exist)
+            added_log = True
+        if m_preparacion_menu_exist.id not in admin_menus:
+            admin.menus.append(m_preparacion_menu_exist)
+            added_log = True
+        if m_control_menu_exist.id not in admin_menus:
+            admin.menus.append(m_control_menu_exist)
+            added_log = True
+        if added_log:
+            db.commit()
+
     if db.query(models.punto_venta.PuntoVenta).count() == 0:
         pv_inicial = models.punto_venta.PuntoVenta(numero=1, descripcion="Local - Casa Central", facturacion_electronica=True)
         db.add(pv_inicial)
@@ -547,3 +626,6 @@ app.include_router(zona.router)
 app.include_router(stk_mov.router)
 app.include_router(pedidos.router)
 app.include_router(remitos.router)
+app.include_router(transporte.router)
+app.include_router(carga_preparacion.router)
+app.include_router(logistica_control.router)

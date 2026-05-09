@@ -21,6 +21,10 @@ import PlantillasDocumentos from './pages/PlantillasDocumentos';
 import Proveedores from './pages/Proveedores';
 import Dashboard from './pages/Dashboard';
 import AjustesStock from './pages/AjustesStock';
+import Transportes from './pages/Transportes';
+import AsignacionCargas from './pages/AsignacionCargas';
+import PreparacionCarga from './pages/PreparacionCarga';
+import ControlDespacho from './pages/ControlDespacho';
 import Layout from './components/Layout';
 
 export const AuthContext = createContext();
@@ -111,6 +115,12 @@ function App() {
             
             {/* Módulo Stock */}
             <Route path="stock/ajustes" element={<AjustesStock />} />
+            
+            {/* Módulo Logística */}
+            <Route path="transportes" element={<Transportes />} />
+            <Route path="logistica/asignacion" element={<AsignacionCargas />} />
+            <Route path="logistica/preparacion" element={<PreparacionCarga />} />
+            <Route path="logistica/control" element={<ControlDespacho />} />
             
             {/* Nueva Ruta Configuración Empresa y Diseño */}
             <Route path="config/empresa" element={user?.is_admin ? <Empresa /> : <Navigate to="/" />} />

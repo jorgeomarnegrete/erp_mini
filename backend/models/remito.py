@@ -19,6 +19,9 @@ class Remito(Base):
     descuenta_stock = Column(Boolean, default=True)
     observaciones = Column(Text, nullable=True)
     
+    transporte_id = Column(Integer, ForeignKey("transportes.id"), nullable=True)
+    stock_procesado = Column(Boolean, default=False)
+    
     # Totales
     total = Column(Float, default=0.0)
     
@@ -27,6 +30,7 @@ class Remito(Base):
     cliente = relationship("Cliente", lazy="joined")
     usuario = relationship("User", lazy="joined")
     pedido = relationship("Pedido", lazy="joined")
+    transporte = relationship("Transporte", lazy="joined")
     
     detalles = relationship("RemitoDetalle", back_populates="remito", cascade="all, delete-orphan", lazy="joined")
 

@@ -59,6 +59,8 @@ El sistema sigue un estándar estricto para la carga rápida de datos mediante t
     - **Navegación**: Selección de registros mediante flechas del teclado.
     - **Confirmación**: La tecla `Enter` selecciona el registro, cierra el modal y actualiza automáticamente el renglón correspondiente.
 
+- **Estética y Minimalismo**: Evitar leyendas redundantes o innecesarias. La interfaz debe ser limpia, con botones y etiquetas profesionales y directos.
+
 Cualquier nueva implementación de búsqueda de entidades (productos, clientes, etc.) debe reutilizar estos componentes y lógica.
 
 ### Sistema de Menús Dinámicos
@@ -84,6 +86,11 @@ Para agregar un nuevo módulo al menú, se debe realizar mediante un script de m
 
 ### 🤝 Compras y Proveedores
 - **Proveedores:** Maestro de proveedores y seguimiento de compras.
+
+### 🚚 Logística
+- **Gestión de Transportes:** Maestro de transportistas con soporte para códigos externos e identidad fiscal.
+- **Asignación de Cargas:** Interfaz para la oficina de logística donde se seleccionan remitos pendientes y se asignan a un transporte específico.
+- **Control de Despacho:** Flujo para operarios en planta que permite validar la carga consolidada por familias mediante escaneo de ID, asegurando que lo que sale coincida con lo planificado.
 
 ### 🛠️ Administración
 - **Identidad de Empresa:** Configuración de razón social, CUIT, logo y datos fiscales.
