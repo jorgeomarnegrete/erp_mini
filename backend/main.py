@@ -22,9 +22,10 @@ import models.proveedor
 import models.zona
 import models.stk_mov
 import models.remito
+import models.remito_compra
 import models.transporte
 import models.carga_preparacion
-from routers import pedidos, remitos, transporte, carga_preparacion, logistica_control
+from routers import pedidos, remitos, remitos_compra, transporte, carga_preparacion, logistica_control
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -39,6 +40,7 @@ async def lifespan(app: FastAPI):
         # Para ser seguros en todas las versiones, intentamos el alter y capturamos si ya existe o usamos el check de Postgres
         db.execute(text("ALTER TABLE remitos ADD COLUMN IF NOT EXISTS transporte_id INTEGER REFERENCES transportes(id)"))
         db.execute(text("ALTER TABLE remitos ADD COLUMN IF NOT EXISTS stock_procesado BOOLEAN DEFAULT FALSE"))
+        db.execute(text("ALTER TABLE remito_compra_detalles ADD COLUMN IF NOT EXISTS cantidad_recibida FLOAT DEFAULT 0.0"))
         db.commit()
     except Exception as e:
         db.rollback()
@@ -383,6 +385,12 @@ async def lifespan(app: FastAPI):
         db.add(m_prov)
         db.commit()
 
+    m_remitos_compra_exist = db.query(Menu).filter(Menu.ruta == "/compras/remitos").first()
+    if not m_remitos_compra_exist:
+        m_remitos_compra = Menu(nombre="Remitos de Compra", ruta="/compras/remitos", icono="ClipboardCheck", parent_id=m_compras_exist.id, orden=2)
+        db.add(m_remitos_compra)
+        db.commit()
+
     # Inyección Dinámica Módulo Stock y Ajustes
     m_stock_exist = db.query(Menu).filter(Menu.nombre == "Stock").first()
     if not m_stock_exist:
@@ -396,6 +404,14 @@ async def lifespan(app: FastAPI):
     if not m_ajuste_exist:
         m_ajuste = Menu(nombre="Ajuste de stock", ruta="/stock/ajustes", icono="ArrowRightLeft", parent_id=m_stock_exist.id, orden=1)
         db.add(m_ajuste)
+        db.commit()
+        db.refresh(m_ajuste)
+        m_ajuste_exist = m_ajuste
+
+    m_ingreso_scanner_exist = db.query(Menu).filter(Menu.ruta == "/stock/ingreso-scanner").first()
+    if not m_ingreso_scanner_exist:
+        m_ing_scan = Menu(nombre="Ingreso por Scanner", ruta="/stock/ingreso-scanner", icono="ScanBarcode", parent_id=m_stock_exist.id, orden=2)
+        db.add(m_ing_scan)
         db.commit()
         
     # Auto-asignar a administradores si no lo tienen
@@ -428,6 +444,11 @@ async def lifespan(app: FastAPI):
             if m_a and m_a.id not in admin_menus:
                 admin.menus.append(m_a)
                 added = True
+        
+        m_i_s = db.query(Menu).filter(Menu.ruta == "/stock/ingreso-scanner").first()
+        if m_i_s and m_i_s.id not in admin_menus:
+            admin.menus.append(m_i_s)
+            added = True
 
         m_pedidos_exist = db.query(Menu).filter(Menu.ruta == "/pedidos").first()
         if not m_pedidos_exist:
@@ -626,6 +647,7 @@ app.include_router(zona.router)
 app.include_router(stk_mov.router)
 app.include_router(pedidos.router)
 app.include_router(remitos.router)
+app.include_router(remitos_compra.router)
 app.include_router(transporte.router)
 app.include_router(carga_preparacion.router)
 app.include_router(logistica_control.router)

@@ -81,11 +81,14 @@ Para agregar un nuevo módulo al menú, se debe realizar mediante un script de m
 - **Remitos:** Gestión de entregas de mercadería con trazabilidad completa. Permite la carga manual o automática desde Pedidos (importando saldos pendientes), actualización dinámica del estado del pedido (Parcial/Completado), control opcional de stock físico e **impresión de comprobantes en PDF**. Soporta numeración correlativa legal por Punto de Venta.
 
 ### 📦 Gestión de Inventario (Stock)
-- **Ajustes de Stock:** Movimientos de entrada y salida manuales.
+- **Ajustes de Stock:** Movimientos de entrada y salida manuales. Estos son los **únicos** registros que afectan la tabla `stk_mov`.
 - **Control de Productos:** Categorización por rubros, gestión de tasas de IVA y múltiples listas de precios.
+- **Ingreso por Scanner:** Interfaz optimizada para tablets y colectores de datos que permite procesar la entrada de mercadería contra remitos de compra mediante la lectura del ID (código de barras), agrupando los artículos por familia.
+- **Regla de Oro de Stock:** Los Remitos (Venta/Compra) afectan directamente el campo `stock_actual` de la tabla `productos` si así se indica, pero **no deben generar registros en `stk_mov`**. Dicha tabla es exclusiva para auditoría de ajustes manuales.
 
 ### 🤝 Compras y Proveedores
 - **Proveedores:** Maestro de proveedores y seguimiento de compras.
+- **Remitos de Compra:** Registro de ingreso de mercadería. A diferencia de ventas, el número de remito es manual (formato del proveedor) y no depende de puntos de venta internos. Soporta el control de stock directo.
 
 ### 🚚 Logística
 - **Gestión de Transportes:** Maestro de transportistas con soporte para códigos externos e identidad fiscal.

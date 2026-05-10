@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from models.remito import Remito, RemitoDetalle
 from models.pedido import Pedido, PedidoDetalle
 from models.punto_venta import PuntoVenta
+from models.producto import Producto
 from models.stk_mov import StkMov
 from schemas.remito import RemitoCreate
 
@@ -47,16 +48,11 @@ def create_remito(db: Session, remito_in: RemitoCreate, user_id: int):
             if ped_det:
                 ped_det.entregado += det.cantidad
         
-        # Lógica de Stock: Generar Movimiento si corresponde
+        # Lógica de Stock Directo: Actualizar stock_actual si corresponde
         if remito_in.descuenta_stock:
-            mov = StkMov(
-                id_usuario=user_id,
-                id_producto=det.producto_id,
-                motivo=f"Remito {pv.numero:04d}-{numero_asignado:08d}",
-                cantidad=det.cantidad,
-                tipo=2 # Salida
-            )
-            db.add(mov)
+            producto = db.query(Producto).filter(Producto.id == det.producto_id).first()
+            if producto:
+                producto.stock_actual -= det.cantidad
 
     # 4. Actualizar estado del Pedido si corresponde
     if remito_in.pedido_id:

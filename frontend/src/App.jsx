@@ -19,8 +19,10 @@ import Remitos from './pages/Remitos';
 import Empresa from './pages/Empresa';
 import PlantillasDocumentos from './pages/PlantillasDocumentos';
 import Proveedores from './pages/Proveedores';
+import RemitosCompra from './pages/RemitosCompra';
 import Dashboard from './pages/Dashboard';
 import AjustesStock from './pages/AjustesStock';
+import IngresoStock from './pages/IngresoStock';
 import Transportes from './pages/Transportes';
 import AsignacionCargas from './pages/AsignacionCargas';
 import PreparacionCarga from './pages/PreparacionCarga';
@@ -112,9 +114,11 @@ function App() {
             <Route path="cotizaciones" element={<Cotizaciones />} />
             <Route path="pedidos" element={<Pedidos />} />
             <Route path="remitos" element={<Remitos />} />
+            <Route path="compras/remitos" element={<RemitosCompra />} />
             
             {/* Módulo Stock */}
             <Route path="stock/ajustes" element={<AjustesStock />} />
+            <Route path="stock/ingreso-scanner" element={<IngresoStock />} />
             
             {/* Módulo Logística */}
             <Route path="transportes" element={<Transportes />} />
