@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Text, DateTime
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -20,6 +20,9 @@ class Producto(Base):
     stock_minimo = Column(Float, nullable=False, default=0.0)
     unidad = Column(String, nullable=False, default="Unidades")
     activo = Column(Boolean, default=True, nullable=False)
+    
+    # Lotes de stock vinculados
+    lotes = relationship("ProductoLoteStock", back_populates="producto", cascade="all, delete-orphan")
 
     # Relaciones Eager.
     categoria = relationship("Categoria", lazy="joined")
@@ -40,3 +43,15 @@ class ProductoPrecio(Base):
     
     producto = relationship("Producto", back_populates="precios_personalizados")
     lista_precio = relationship("ListaPrecio", lazy="joined")
+
+class ProductoLoteStock(Base):
+    """Saldos de stock desglosados por lote y vencimiento"""
+    __tablename__ = "producto_lotes_stock"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    producto_id = Column(Integer, ForeignKey("productos.id", ondelete="CASCADE"), nullable=False)
+    nro_lote = Column(String, index=True, nullable=True)
+    fecha_vencimiento = Column(DateTime, index=True, nullable=True)
+    cantidad_actual = Column(Float, default=0.0)
+    
+    producto = relationship("Producto", back_populates="lotes")

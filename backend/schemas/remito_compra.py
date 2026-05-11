@@ -11,6 +11,8 @@ class RemitoCompraDetalleBase(BaseModel):
     cantidad: float
     precio_unitario: float
     subtotal: float
+    nro_lote: Optional[str] = None
+    fecha_vencimiento: Optional[datetime] = None
 
 class RemitoCompraDetalleCreate(RemitoCompraDetalleBase):
     pass

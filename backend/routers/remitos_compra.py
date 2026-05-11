@@ -15,7 +15,7 @@ def create_remito(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    return remito_compra.create_remito_compra(db, remito_in, current_user.id)
+    return remito_comp_crud.create_remito_compra(db, remito_in, current_user.id)
 
 @router.get("/", response_model=List[RemitoCompraResponse])
 def read_remitos(
@@ -37,11 +37,12 @@ def read_remitos_pendientes_control(
 def scan_item(
     remito_id: int,
     producto_id: int,
+    nro_lote: str = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     try:
-        return remito_comp_crud.procesar_escaneo_item(db, remito_id, producto_id, current_user.id)
+        return remito_comp_crud.procesar_escaneo_item(db, remito_id, producto_id, nro_lote, current_user.id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -51,7 +52,7 @@ def read_remito(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    db_remito = remito_compra.get_remito_compra(db, remito_id=remito_id)
+    db_remito = remito_comp_crud.get_remito_compra(db, remito_id=remito_id)
     if db_remito is None:
         raise HTTPException(status_code=404, detail="Remito de compra no encontrado")
     return db_remito

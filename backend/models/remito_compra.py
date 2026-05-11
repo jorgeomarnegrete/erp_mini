@@ -39,6 +39,10 @@ class RemitoCompraDetalle(Base):
     precio_unitario = Column(Float, default=0.0)
     subtotal = Column(Float, default=0.0)
     
+    # Nuevos campos de trazabilidad
+    nro_lote = Column(String, nullable=True)
+    fecha_vencimiento = Column(DateTime, nullable=True)
+    
     # Relación Inversa
     remito = relationship("RemitoCompra", back_populates="detalles")
     producto = relationship("Producto", lazy="joined")

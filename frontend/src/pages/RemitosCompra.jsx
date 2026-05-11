@@ -37,7 +37,7 @@ export default function RemitosCompra() {
 
   // Estado de los Renglones (Detalle)
   const [detalles, setDetalles] = useState([
-    { temp_id: Date.now(), producto_id: '', cantidad: 1, precio_unitario: 0, subtotal: 0 }
+    { temp_id: Date.now(), producto_id: '', cantidad: 1, precio_unitario: 0, subtotal: 0, nro_lote: '', fecha_vencimiento: '' }
   ]);
 
   const fetchData = async () => {
@@ -93,14 +93,14 @@ export default function RemitosCompra() {
       observaciones: '',
       total: 0
     });
-    setDetalles([{ temp_id: Date.now(), producto_id: '', cantidad: 1, precio_unitario: 0, subtotal: 0 }]);
+    setDetalles([{ temp_id: Date.now(), producto_id: '', cantidad: 1, precio_unitario: 0, subtotal: 0, nro_lote: '', fecha_vencimiento: '' }]);
     setErrorMsg('');
     setIsModalOpen(true);
   };
 
   const addDetalle = () => {
     const newId = Date.now();
-    setDetalles([...detalles, { temp_id: newId, producto_id: '', cantidad: 1, precio_unitario: 0, subtotal: 0 }]);
+    setDetalles([...detalles, { temp_id: newId, producto_id: '', cantidad: 1, precio_unitario: 0, subtotal: 0, nro_lote: '', fecha_vencimiento: '' }]);
     setTimeout(() => {
        setActiveRowId(newId);
        productRefs.current[newId]?.focus();
@@ -123,10 +123,23 @@ export default function RemitosCompra() {
               newData.precio_unitario = prod.costo_neto || 0;
               newData.subtotal = newData.cantidad * newData.precio_unitario;
               
+              // Foco automático a la fecha de vencimiento al elegir producto
               setTimeout(() => {
-                 quantityRefs.current[temp_id]?.focus();
-                 quantityRefs.current[temp_id]?.select();
+                 document.getElementById(`venc-${temp_id}`)?.focus();
               }, 100);
+           }
+        }
+
+        if (field === 'fecha_vencimiento') {
+           if (value) {
+              const dateObj = new Date(value);
+              if (!isNaN(dateObj.getTime())) {
+                const yyyy = dateObj.getFullYear();
+                const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const dd = String(dateObj.getDate()).padStart(2, '0');
+                // Sugerencia de lote automático FECHA-001
+                newData.nro_lote = `${yyyy}${mm}${dd}-001`;
+              }
            }
         }
 
@@ -171,7 +184,9 @@ export default function RemitosCompra() {
            producto_id: parseInt(d.producto_id),
            cantidad: d.cantidad,
            precio_unitario: d.precio_unitario,
-           subtotal: d.cantidad * d.precio_unitario
+           subtotal: d.cantidad * d.precio_unitario,
+           nro_lote: d.nro_lote || null,
+           fecha_vencimiento: d.fecha_vencimiento || null
         }))
       };
 
@@ -312,7 +327,7 @@ export default function RemitosCompra() {
                         onChange={e => setHead({...head, afecta_stock: e.target.checked})}
                       />
                       <span className="ml-3 text-sm font-bold text-gray-700 flex items-center">
-                         <Package className="w-4 h-4 mr-1 text-blue-500" /> ¿Descuenta Stock?
+                         <Package className="w-4 h-4 mr-1 text-blue-500" /> Procesar Stock
                       </span>
                    </label>
                 </div>
@@ -330,8 +345,10 @@ export default function RemitosCompra() {
                 <table className="w-full text-left border-collapse">
                    <thead className="bg-slate-100/50 text-slate-800 text-xs font-black uppercase">
                      <tr>
-                       <th className="p-3 w-1/2 border-b">Producto</th>
-                       <th className="p-3 border-b text-center w-32">Cantidad</th>
+                       <th className="p-3 w-1/3 border-b">Producto</th>
+                       <th className="p-3 border-b text-center w-24">Cantidad</th>
+                       <th className="p-3 border-b text-center w-40">Vencimiento</th>
+                       <th className="p-3 border-b text-center w-40">Lote Interno</th>
                        <th className="p-3 border-b text-right">Costo Unit.</th>
                        <th className="p-3 border-b text-right bg-slate-100">Subtotal</th>
                        <th className="p-3 border-b text-center w-12"></th>
@@ -358,17 +375,35 @@ export default function RemitosCompra() {
                                <Search className="absolute right-2 top-2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                              </div>
                           </td>
-                           <td className="p-2">
-                             <input 
-                               ref={el => quantityRefs.current[d.temp_id] = el}
-                               type="number" 
-                               min="0.01" 
-                               step="0.01" 
-                               className="w-full p-1.5 rounded border border-gray-300 text-center font-bold text-sm" 
-                               value={d.cantidad} 
-                               onChange={e => updateDetalle(d.temp_id, 'cantidad', parseFloat(e.target.value)||0)} 
-                             />
-                           </td>
+                            <td className="p-2">
+                              <input 
+                                ref={el => quantityRefs.current[d.temp_id] = el}
+                                type="number" 
+                                min="0.01" 
+                                step="0.01" 
+                                className="w-full p-1.5 rounded border border-gray-300 text-center font-bold text-sm" 
+                                value={d.cantidad} 
+                                onChange={e => updateDetalle(d.temp_id, 'cantidad', parseFloat(e.target.value)||0)} 
+                              />
+                            </td>
+                            <td className="p-2">
+                              <input 
+                                id={`venc-${d.temp_id}`}
+                                type="date" 
+                                className="w-full p-1.5 rounded border border-gray-300 text-center font-bold text-xs" 
+                                value={d.fecha_vencimiento} 
+                                onChange={e => updateDetalle(d.temp_id, 'fecha_vencimiento', e.target.value)} 
+                              />
+                            </td>
+                            <td className="p-2">
+                              <input 
+                                type="text" 
+                                className="w-full p-1.5 rounded border border-gray-200 bg-gray-50 text-gray-600 text-center font-mono font-bold text-xs" 
+                                placeholder="Auto..."
+                                value={d.nro_lote} 
+                                onChange={e => updateDetalle(d.temp_id, 'nro_lote', e.target.value)} 
+                              />
+                            </td>
                           <td className="p-2">
                              <div className="flex items-center">
                                <span className="text-gray-400 mr-1">$</span>

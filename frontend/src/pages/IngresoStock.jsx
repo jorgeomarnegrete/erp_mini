@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../App';
-import { ScanBarcode, Truck, ClipboardList, Package, CheckCircle2, Printer, X, Info } from 'lucide-react';
+import { ScanBarcode, Truck, ClipboardList, Package, CheckCircle2, Printer, X, Info, AlertTriangle } from 'lucide-react';
 import SupplierSearchModal from '../components/SupplierSearchModal';
+import { qzService } from '../utils/qzHelper';
 
 export default function IngresoStock() {
   const { api } = useAuth();
@@ -19,6 +20,8 @@ export default function IngresoStock() {
   const [scanValue, setScanValue] = useState('');
   const [feedback, setFeedback] = useState({ message: '', type: '' });
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
+  const [qzStatus, setQzStatus] = useState('disconnected'); // disconnected, connecting, connected, error
+  const [isPrinting, setIsPrinting] = useState(false);
 
   const scanInputRef = useRef(null);
 
@@ -32,6 +35,18 @@ export default function IngresoStock() {
       }
     };
     fetchBaseData();
+    
+    // Inicializar QZ Tray
+    const initQZ = async () => {
+      setQzStatus('connecting');
+      try {
+        await qzService.init(api);
+        setQzStatus('connected');
+      } catch (err) {
+        setQzStatus('error');
+      }
+    };
+    initQZ();
   }, [api]);
 
   const fetchRemitosPendientes = async (proveedorId) => {
@@ -68,23 +83,37 @@ export default function IngresoStock() {
     e.preventDefault();
     if (!scanValue || !selectedRemito) return;
 
-    const productoId = parseInt(scanValue);
+    // Parseo del formato ID|LOTE
+    let productoId = '';
+    let loteDetectado = '';
+
+    if (scanValue.includes('|')) {
+      const parts = scanValue.split('|');
+      productoId = parseInt(parts[0]);
+      loteDetectado = parts[1];
+    } else {
+      productoId = parseInt(scanValue);
+    }
+
     setScanValue('');
 
     try {
-      setFeedback({ message: 'Procesando...', type: 'info' });
-      const res = await api.post(`/api/remitos-compra/control/escanear-item?remito_id=${selectedRemito.id}&producto_id=${productoId}`);
+      setFeedback({ message: `Procesando ${loteDetectado ? 'Lote ' + loteDetectado : 'ID ' + productoId}...`, type: 'info' });
       
-      // Actualizar estado local
+      const res = await api.post(`/api/remitos-compra/control/escanear-item?remito_id=${selectedRemito.id}&producto_id=${productoId}${loteDetectado ? '&nro_lote=' + loteDetectado : ''}`);
+      
+      // Actualizar estado local (buscamos por ID y Lote si corresponde)
       setItems(items.map(item => {
-        if (item.producto_id === productoId) {
+        const matchId = item.producto_id === productoId;
+        const matchLote = !loteDetectado || item.nro_lote === loteDetectado;
+        
+        if (matchId && matchLote) {
           return { ...item, cantidad_recibida: res.data.cantidad_recibida };
         }
         return item;
       }));
 
-      setFeedback({ message: '¡Producto ingresado!', type: 'success' });
-      // Play a success sound if needed
+      setFeedback({ message: `¡${loteDetectado ? 'Lote ' + loteDetectado : 'Producto'} ingresado!`, type: 'success' });
     } catch (error) {
       setFeedback({ message: error.response?.data?.detail || 'Error al escanear', type: 'error' });
     }
@@ -99,6 +128,41 @@ export default function IngresoStock() {
     }, 1000);
     return () => clearInterval(interval);
   }, [selectedRemito]);
+
+  const handlePrintAllLabels = async () => {
+    if (qzStatus !== 'connected') {
+      alert("QZ Tray no está conectado. Asegúrate de que la aplicación esté abierta.");
+      return;
+    }
+
+    setIsPrinting(true);
+    try {
+      const config = await qzService.findPrinter("Zebra"); // Ajustar nombre si es necesario
+      const printData = [];
+
+      // Generar ZPL para cada ítem recibido
+      items.forEach(item => {
+        const cant = item.cantidad_recibida || item.cantidad; // Imprimir etiquetas para lo recibido o lo total
+        const zpl = `
+^XA^CI28
+^FO50,40^A0N,35,35^FD${item.producto?.nombre?.substring(0,30)}^FS
+^FO50,90^A0N,25,25^FDCod: ${item.producto?.codigo_interno}^FS
+^FO50,125^A0N,25,25^FDLote: ${item.nro_lote || 'N/A'}^FS
+^FO50,165^BY2,3,60^BCN,60,Y,N,N^FD${item.producto_id}|${item.nro_lote || ''}^FS
+^PQ${Math.max(1, Math.round(cant))}
+^XZ`;
+        printData.push(zpl);
+      });
+
+      await qzService.printRaw(config, printData);
+      setFeedback({ message: '¡Etiquetas enviadas a Zebra!', type: 'success' });
+      setIsLabelModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert("Error al imprimir: " + err.message);
+    }
+    setIsPrinting(false);
+  };
 
   // Agrupar items por categoría para la UI
   const groupedItems = items.reduce((groups, item) => {
@@ -205,7 +269,14 @@ export default function IngresoStock() {
                         ID: {item.producto_id}
                       </div>
                       <div className="flex-1 text-center md:text-left">
-                        <h4 className="text-lg font-black text-gray-800">{item.producto?.nombre}</h4>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="text-lg font-black text-gray-800">{item.producto?.nombre}</h4>
+                          {item.nro_lote && (
+                            <span className="bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">
+                              Lote: {item.nro_lote}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-400 font-bold uppercase">{item.producto?.codigo_interno}</p>
                       </div>
                       <div className="w-full md:w-64">
@@ -245,32 +316,54 @@ export default function IngresoStock() {
       />
 
       {/* Modal Etiquetas Zebra (Placeholder) */}
-      {isLabelModalOpen && (
+    {isLabelModalOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-t-8 border-slate-800">
             <div className="p-8 text-center">
-               <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Printer className="w-10 h-10 text-slate-800" />
+               <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${qzStatus === 'connected' ? 'bg-emerald-100' : 'bg-slate-100'}`}>
+                  <Printer className={`w-10 h-10 ${qzStatus === 'connected' ? 'text-emerald-600' : 'text-slate-800'}`} />
                </div>
-               <h3 className="text-2xl font-black text-gray-800 mb-2">Impresión Zebra</h3>
-               <p className="text-gray-500 font-medium leading-relaxed">
-                  Este es un marcador de posición para la integración futura con impresoras térmicas **Zebra**.
+               <h3 className="text-2xl font-black text-gray-800 mb-2">Impresión Zebra ZT230</h3>
+               
+               <div className="mb-6">
+                 {qzStatus === 'connected' ? (
+                   <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold flex items-center justify-center w-fit mx-auto">
+                     <CheckCircle2 className="w-3 h-3 mr-1" /> QZ Tray Conectado
+                   </span>
+                 ) : qzStatus === 'connecting' ? (
+                   <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+                     Conectando a QZ Tray...
+                   </span>
+                 ) : (
+                   <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold flex items-center justify-center w-fit mx-auto">
+                     <AlertTriangle className="w-3 h-3 mr-1" /> QZ Tray Desconectado
+                   </span>
+                 )}
+               </div>
+
+               <p className="text-gray-500 font-medium leading-relaxed text-sm">
+                  Se imprimirán las etiquetas para todos los artículos del remito <strong>{selectedRemito?.numero_remito}</strong>.
+                  Se generará 1 etiqueta por cada unidad recibida.
                </p>
-               <div className="mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-100 text-left">
-                  <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Próximos Pasos</p>
-                  <ul className="text-xs text-slate-600 space-y-2 font-bold">
-                    <li className="flex items-center"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2"></div> Configuración de puerto RAW/IP</li>
-                    <li className="flex items-center"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2"></div> Diseño de etiquetas ZPL/EPL</li>
-                    <li className="flex items-center"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2"></div> Calibración de sensor de etiquetas</li>
-                  </ul>
-               </div>
             </div>
-            <div className="bg-gray-50 p-6 flex justify-center">
+            <div className="bg-gray-50 p-6 flex flex-col gap-3">
+               <button 
+                 disabled={qzStatus !== 'connected' || isPrinting}
+                 onClick={handlePrintAllLabels}
+                 className={`w-full py-4 rounded-2xl font-black shadow-lg transition-all flex items-center justify-center ${
+                   qzStatus === 'connected' ? 'bg-slate-800 text-white hover:bg-slate-900' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                 }`}
+               >
+                 {isPrinting ? (
+                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                 ) : <Printer className="w-5 h-5 mr-2" />}
+                 Imprimir Todas las Etiquetas
+               </button>
                <button 
                  onClick={() => setIsLabelModalOpen(false)}
-                 className="bg-slate-800 text-white px-12 py-3 rounded-2xl font-black shadow-lg hover:bg-slate-900 transition-all"
+                 className="text-gray-400 font-bold text-sm hover:text-gray-600"
                >
-                 Entendido
+                 Cancelar
                </button>
             </div>
           </div>

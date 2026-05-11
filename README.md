@@ -83,8 +83,8 @@ Para agregar un nuevo módulo al menú, se debe realizar mediante un script de m
 ### 📦 Gestión de Inventario (Stock)
 - **Ajustes de Stock:** Movimientos de entrada y salida manuales. Estos son los **únicos** registros que afectan la tabla `stk_mov`.
 - **Control de Productos:** Categorización por rubros, gestión de tasas de IVA y múltiples listas de precios.
-- **Ingreso por Scanner:** Interfaz optimizada para tablets y colectores de datos que permite procesar la entrada de mercadería contra remitos de compra mediante la lectura del ID (código de barras), agrupando los artículos por familia.
-- **Regla de Oro de Stock:** Los Remitos (Venta/Compra) afectan directamente el campo `stock_actual` de la tabla `productos` si así se indica, pero **no deben generar registros en `stk_mov`**. Dicha tabla es exclusiva para auditoría de ajustes manuales.
+- **Ingreso por Scanner**: Interfaz optimizada para tablets y colectores de datos que permite procesar la entrada de mercadería contra remitos de compra mediante la lectura del ID (código de barras), agrupando los artículos por familia. El sistema soporta un formato delimitado simple para capturar trazabilidad: `ID|LOTE` (ej. `45|20240511-001`).
+- **Regla de Oro de Stock**: Los Remitos (Venta/Compra) afectan directamente el campo `stock_actual` de la tabla `productos` si así se indica, pero **no deben generar registros en `stk_mov`**. Dicha tabla es exclusiva para auditoría de ajustes manuales.
 
 ### 🤝 Compras y Proveedores
 - **Proveedores:** Maestro de proveedores y seguimiento de compras.

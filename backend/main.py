@@ -25,7 +25,7 @@ import models.remito
 import models.remito_compra
 import models.transporte
 import models.carga_preparacion
-from routers import pedidos, remitos, remitos_compra, transporte, carga_preparacion, logistica_control
+from routers import pedidos, remitos, remitos_compra, transporte, carga_preparacion, logistica_control, qz
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -41,10 +41,13 @@ async def lifespan(app: FastAPI):
         db.execute(text("ALTER TABLE remitos ADD COLUMN IF NOT EXISTS transporte_id INTEGER REFERENCES transportes(id)"))
         db.execute(text("ALTER TABLE remitos ADD COLUMN IF NOT EXISTS stock_procesado BOOLEAN DEFAULT FALSE"))
         db.execute(text("ALTER TABLE remito_compra_detalles ADD COLUMN IF NOT EXISTS cantidad_recibida FLOAT DEFAULT 0.0"))
+        # Nuevos campos de vencimiento
+        db.execute(text("ALTER TABLE remito_compra_detalles ADD COLUMN IF NOT EXISTS nro_lote VARCHAR"))
+        db.execute(text("ALTER TABLE remito_compra_detalles ADD COLUMN IF NOT EXISTS fecha_vencimiento TIMESTAMP"))
         db.commit()
     except Exception as e:
         db.rollback()
-        # Si falla por sintaxis de IF NOT EXISTS, es probable que ya exista o sea una versión vieja
+        print(f"Error en migración manual: {e}")
         pass
     
     # Inyectar menús de prueba si no existen
@@ -648,6 +651,7 @@ app.include_router(stk_mov.router)
 app.include_router(pedidos.router)
 app.include_router(remitos.router)
 app.include_router(remitos_compra.router)
+app.include_router(qz.router)
 app.include_router(transporte.router)
 app.include_router(carga_preparacion.router)
 app.include_router(logistica_control.router)
