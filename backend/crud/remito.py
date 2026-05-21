@@ -4,9 +4,11 @@ from fastapi import HTTPException
 from models.remito import Remito, RemitoDetalle
 from models.pedido import Pedido, PedidoDetalle
 from models.punto_venta import PuntoVenta
-from models.producto import Producto
+from models.producto import Producto, ProductoLoteStock
 from models.stk_mov import StkMov
+from models.cliente import Cliente
 from schemas.remito import RemitoCreate
+from typing import List
 
 def create_remito(db: Session, remito_in: RemitoCreate, user_id: int):
     # 1. Recuperar Punto De Venta para auto-numeración
@@ -38,7 +40,9 @@ def create_remito(db: Session, remito_in: RemitoCreate, user_id: int):
             id_pedido_detalle=det.id_pedido_detalle,
             cantidad=det.cantidad,
             precio_unitario=det.precio_unitario,
-            subtotal=det.subtotal
+            subtotal=det.subtotal,
+            nro_lote=det.nro_lote,
+            fecha_vencimiento=det.fecha_vencimiento
         )
         db.add(db_det)
         
@@ -53,6 +57,15 @@ def create_remito(db: Session, remito_in: RemitoCreate, user_id: int):
             producto = db.query(Producto).filter(Producto.id == det.producto_id).first()
             if producto:
                 producto.stock_actual -= det.cantidad
+                
+            # Lógica de Lotes: Restar del lote específico si existe
+            if det.nro_lote:
+                lote_stock = db.query(ProductoLoteStock).filter(
+                    ProductoLoteStock.producto_id == det.producto_id,
+                    ProductoLoteStock.nro_lote == det.nro_lote
+                ).first()
+                if lote_stock:
+                    lote_stock.cantidad_actual -= det.cantidad
 
     # 4. Actualizar estado del Pedido si corresponde
     if remito_in.pedido_id:
@@ -87,8 +100,7 @@ def get_pedidos_pendientes_cliente(db: Session, cliente_id: int):
         Pedido.cliente_id == cliente_id,
         Pedido.estado.in_(["Pendiente", "Parcial"])
     ).all()
-from models.cliente import Cliente
-from typing import List
+    return pedidos
 
 def get_remitos_para_asignar(db: Session, zona_ids: List[int]):
     """Obtiene remitos sin transporte filtrados por múltiples zonas de entrega"""

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../App';
-import { Truck, Plus, Trash2, X, Save, Search, ClipboardList, Package, Printer, FileText } from 'lucide-react';
+import { Truck, Plus, Trash2, X, Save, Search, ClipboardList, Package, Printer, FileText, Database } from 'lucide-react';
 import ProductSearchModal from '../components/ProductSearchModal';
 import ClientSearchModal from '../components/ClientSearchModal';
+import BatchSearchModal from '../components/BatchSearchModal';
 
 export default function Remitos() {
   const { api } = useAuth();
@@ -23,7 +24,9 @@ export default function Remitos() {
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isPedidoModalOpen, setIsPedidoModalOpen] = useState(false);
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [pedidosPendientes, setPedidosPendientes] = useState([]);
+  const [selectedProductForBatch, setSelectedProductForBatch] = useState(null);
   
   const [activeRowId, setActiveRowId] = useState(null);
   const quantityRefs = useRef({});
@@ -41,7 +44,7 @@ export default function Remitos() {
 
   // Estado de los Renglones (Detalle)
   const [detalles, setDetalles] = useState([
-    { temp_id: Date.now(), producto_id: '', id_pedido_detalle: null, cantidad: 1, precio_unitario: 0, subtotal: 0 }
+    { temp_id: Date.now(), producto_id: '', id_pedido_detalle: null, cantidad: 1, precio_unitario: 0, subtotal: 0, nro_lote: null, fecha_vencimiento: null }
   ]);
 
   const fetchData = async () => {
@@ -70,7 +73,7 @@ export default function Remitos() {
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
       if (!isModalOpen) return;
-      if (isClientModalOpen || isProductModalOpen || isPedidoModalOpen) return;
+      if (isClientModalOpen || isProductModalOpen || isPedidoModalOpen || isBatchModalOpen) return;
 
       if (e.key === 'Insert') {
         e.preventDefault();
@@ -89,7 +92,7 @@ export default function Remitos() {
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isModalOpen, isClientModalOpen, isProductModalOpen, isPedidoModalOpen, detalles]);
+  }, [isModalOpen, isClientModalOpen, isProductModalOpen, isPedidoModalOpen, isBatchModalOpen, detalles, clientes, productos]);
 
   const openModal = () => {
     setHead({
@@ -100,14 +103,14 @@ export default function Remitos() {
       observaciones: '',
       total: 0
     });
-    setDetalles([{ temp_id: Date.now(), producto_id: '', id_pedido_detalle: null, cantidad: 1, precio_unitario: 0, subtotal: 0 }]);
+    setDetalles([{ temp_id: Date.now(), producto_id: '', id_pedido_detalle: null, cantidad: 1, precio_unitario: 0, subtotal: 0, nro_lote: null, fecha_vencimiento: null }]);
     setErrorMsg('');
     setIsModalOpen(true);
   };
 
   const addDetalle = () => {
     const newId = Date.now();
-    setDetalles([...detalles, { temp_id: newId, producto_id: '', id_pedido_detalle: null, cantidad: 1, precio_unitario: 0, subtotal: 0 }]);
+    setDetalles([...detalles, { temp_id: newId, producto_id: '', id_pedido_detalle: null, cantidad: 1, precio_unitario: 0, subtotal: 0, nro_lote: null, fecha_vencimiento: null }]);
     setTimeout(() => {
        setActiveRowId(newId);
        productRefs.current[newId]?.focus();
@@ -130,6 +133,12 @@ export default function Remitos() {
               newData.precio_unitario = prod.costo_neto || 0; // Por defecto costo o precio sugerido
               newData.subtotal = newData.cantidad * newData.precio_unitario;
               
+              // Si el producto tiene lotes, abrimos el modal de lotes
+              if (prod.lotes && prod.lotes.length > 0) {
+                 setSelectedProductForBatch(prod);
+                 setIsBatchModalOpen(true);
+              }
+
               setTimeout(() => {
                  quantityRefs.current[temp_id]?.focus();
                  quantityRefs.current[temp_id]?.select();
@@ -170,7 +179,9 @@ export default function Remitos() {
         id_pedido_detalle: det.id,
         cantidad: det.cantidad - det.entregado,
         precio_unitario: det.precio_unitario,
-        subtotal: (det.cantidad - det.entregado) * det.precio_unitario
+        subtotal: (det.cantidad - det.entregado) * det.precio_unitario,
+        nro_lote: null,
+        fecha_vencimiento: null
       }));
     
     if (newDetalles.length > 0) {
@@ -210,7 +221,9 @@ export default function Remitos() {
            id_pedido_detalle: d.id_pedido_detalle,
            cantidad: d.cantidad,
            precio_unitario: d.precio_unitario,
-           subtotal: d.cantidad * d.precio_unitario
+           subtotal: d.cantidad * d.precio_unitario,
+           nro_lote: d.nro_lote,
+           fecha_vencimiento: d.fecha_vencimiento
         }))
       };
 
@@ -407,6 +420,7 @@ export default function Remitos() {
                    <thead className="bg-slate-100/50 text-slate-800 text-xs font-black uppercase">
                      <tr>
                        <th className="p-3 w-1/2 border-b">Producto</th>
+                       <th className="p-3 border-b text-center w-32">Lote</th>
                        <th className="p-3 border-b text-center w-32">Cantidad</th>
                        <th className="p-3 border-b text-right">Precio Ref.</th>
                        <th className="p-3 border-b text-right bg-slate-100">Subtotal</th>
@@ -433,10 +447,24 @@ export default function Remitos() {
                                />
                                <Search className="absolute right-2 top-2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                              </div>
-                             {d.id_pedido_detalle && (
-                               <span className="text-[10px] font-bold text-blue-600 mt-1 block">Vinculado a Pedido</span>
-                             )}
                           </td>
+                          <td className="p-2">
+                              <button 
+                                type="button"
+                                className={`w-full p-1.5 rounded border text-[10px] font-black uppercase transition-all flex items-center justify-center ${d.nro_lote ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-orange-400 hover:text-orange-600'}`}
+                                onClick={() => {
+                                   const prod = productos.find(p => p.id === d.producto_id);
+                                   if (prod) {
+                                      setSelectedProductForBatch(prod);
+                                      setActiveRowId(d.temp_id);
+                                      setIsBatchModalOpen(true);
+                                   }
+                                }}
+                              >
+                                 <Database className="w-3 h-3 mr-1" />
+                                 {d.nro_lote || 'Asignar'}
+                              </button>
+                           </td>
                            <td className="p-2">
                              <input 
                                ref={el => quantityRefs.current[d.temp_id] = el}
@@ -514,6 +542,21 @@ export default function Remitos() {
         onSelect={(producto) => {
           updateDetalle(activeRowId, 'producto_id', producto);
           setIsProductModalOpen(false);
+        }}
+      />
+
+      <BatchSearchModal
+        isOpen={isBatchModalOpen}
+        onClose={() => setIsBatchModalOpen(false)}
+        producto={selectedProductForBatch}
+        onSelect={(lote) => {
+           setDetalles(detalles.map(d => {
+              if (d.temp_id === activeRowId) {
+                 return { ...d, nro_lote: lote.nro_lote, fecha_vencimiento: lote.fecha_vencimiento };
+              }
+              return d;
+           }));
+           setIsBatchModalOpen(false);
         }}
       />
 

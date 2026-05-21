@@ -17,17 +17,19 @@ def get_preparacion_items(db: Session, transporte_id: int, user_id: int):
         if not remito_ids:
             return []
             
-        # Consolidar por producto
+        # Consolidar por producto y LOTE
         consolidated = db.query(
             RemitoDetalle.producto_id,
+            RemitoDetalle.nro_lote,
             func.sum(RemitoDetalle.cantidad).label('total_cant')
-        ).filter(RemitoDetalle.remito_id.in_(remito_ids)).group_by(RemitoDetalle.producto_id).all()
+        ).filter(RemitoDetalle.remito_id.in_(remito_ids)).group_by(RemitoDetalle.producto_id, RemitoDetalle.nro_lote).all()
         
         # Crear registros temporales
         for row in consolidated:
             new_item = CargaPreparacion(
                 transporte_id=transporte_id,
                 producto_id=row.producto_id,
+                nro_lote=row.nro_lote,
                 user_id=user_id,
                 cantidad=row.total_cant,
                 preparado=False
@@ -48,6 +50,19 @@ def toggle_preparado(db: Session, item_id: int):
     return item
 
 def delete_preparacion(db: Session, transporte_id: int):
+    # 1. Buscar remitos asociados al transporte que aún no descontaron stock
+    remitos = db.query(Remito).filter(
+        Remito.transporte_id == transporte_id,
+        Remito.descuenta_stock == False
+    ).all()
+
+    for remito in remitos:
+        # Marcar remito como "Preparado" para que lo vea Control de Despacho
+        remito.descuenta_stock = True
+        remito.stock_procesado = False
+
+    # 2. Limpiar tabla temporal de preparación
     db.query(CargaPreparacion).filter(CargaPreparacion.transporte_id == transporte_id).delete()
+    
     db.commit()
     return True

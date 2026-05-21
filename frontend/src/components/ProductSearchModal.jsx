@@ -39,6 +39,28 @@ export default function ProductSearchModal({ isOpen, onClose, onSelect, producto
       setSelectedIndex((prev) => Math.max(prev - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
+      
+      // Lógica de Scanner: ID|LOTE o Código Barras Directo
+      const rawValue = searchTerm.trim();
+      
+      if (rawValue.includes('|')) {
+        const parts = rawValue.split('|');
+        const idOrBar = parts[0];
+        // Intentar buscar por ID numérico o por código de barras exacto
+        const match = productos.find(p => p.id === parseInt(idOrBar) || p.codigo_barras === idOrBar || p.codigo_interno === idOrBar);
+        if (match) {
+          onSelect(match);
+          return;
+        }
+      }
+
+      // Búsqueda por código de barras exacto (si no hay pipes)
+      const exactMatch = productos.find(p => p.codigo_barras === rawValue || p.codigo_interno === rawValue);
+      if (exactMatch) {
+        onSelect(exactMatch);
+        return;
+      }
+
       if (displayProducts[selectedIndex]) {
         onSelect(displayProducts[selectedIndex]);
       }

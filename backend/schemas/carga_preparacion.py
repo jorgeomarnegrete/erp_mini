@@ -7,6 +7,7 @@ class CargaPreparacionBase(BaseModel):
     producto_id: int
     user_id: int
     cantidad: float
+    nro_lote: Optional[str] = None
     preparado: bool = False
 
 class CargaPreparacionResponse(CargaPreparacionBase):

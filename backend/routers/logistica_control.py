@@ -22,6 +22,7 @@ async def read_transportes_listos(current_user: User = Depends(get_current_user)
     # Transportes que tienen remitos pendientes de stock
     transportes_ids = db.query(Remito.transporte_id).filter(
         Remito.transporte_id != None,
+        Remito.descuenta_stock == True,
         Remito.stock_procesado == False
     ).distinct().all()
     
@@ -30,7 +31,7 @@ async def read_transportes_listos(current_user: User = Depends(get_current_user)
 
 @router.get("/{transporte_id}/carga")
 async def read_carga_transporte(transporte_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Consolidar lo que SE ESPERA para ese transporte
+    # Consolidar lo que SE ESPERA para ese transporte por PRODUCTO y LOTE
     remitos = db.query(Remito).filter(
         Remito.transporte_id == transporte_id,
         Remito.stock_procesado == False
@@ -43,21 +44,43 @@ async def read_carga_transporte(transporte_id: int, current_user: User = Depends
     carga = db.query(
         Producto.id,
         Producto.nombre,
+        RemitoDetalle.nro_lote,
         func.sum(RemitoDetalle.cantidad).label('cantidad_esperada')
     ).join(RemitoDetalle, Producto.id == RemitoDetalle.producto_id)\
      .filter(RemitoDetalle.remito_id.in_(remito_ids))\
-     .group_by(Producto.id, Producto.nombre).all()
+     .group_by(Producto.id, Producto.nombre, RemitoDetalle.nro_lote).all()
     
-    return [{"producto_id": c.id, "nombre": c.nombre, "cantidad_esperada": c.cantidad_esperada} for c in carga]
+    return [
+        {
+            "producto_id": c.id, 
+            "nombre": c.nombre, 
+            "nro_lote": c.nro_lote,
+            "cantidad_esperada": c.cantidad_esperada
+        } for c in carga
+    ]
 
 @router.post("/confirmar")
 async def confirmar_despacho(data: ConfirmarDespachoRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        # 1. Descontar Stock Real
+        from models.producto import ProductoLoteStock
+        # 1. Descontar Stock Real (Global y Lote)
         for item in data.items_escaneados:
-            producto = db.query(Producto).filter(Producto.id == item['producto_id']).first()
+            # item puede venir como {producto_id: 1, nro_lote: '...', cantidad: 10}
+            prod_id = item.get('producto_id')
+            lote = item.get('nro_lote')
+            cant = item.get('cantidad')
+
+            producto = db.query(Producto).filter(Producto.id == prod_id).first()
             if producto:
-                producto.stock_actual -= item['cantidad']
+                producto.stock_actual -= cant
+            
+            if lote:
+                lote_stock = db.query(ProductoLoteStock).filter(
+                    ProductoLoteStock.producto_id == prod_id,
+                    ProductoLoteStock.nro_lote == lote
+                ).first()
+                if lote_stock:
+                    lote_stock.cantidad_actual -= cant
         
         # 2. Marcar Remitos como Procesados
         remitos = db.query(Remito).filter(
@@ -67,6 +90,7 @@ async def confirmar_despacho(data: ConfirmarDespachoRequest, current_user: User 
         
         for remito in remitos:
             remito.stock_procesado = True
+            remito.descuenta_stock = True # Aseguramos que quede consistente
             
         db.commit()
         return {"message": "Despacho confirmado y stock actualizado con éxito"}

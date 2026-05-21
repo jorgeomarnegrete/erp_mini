@@ -72,6 +72,20 @@ El sistema utiliza una arquitectura de menús dinámicos gestionados desde la ba
 
 Para agregar un nuevo módulo al menú, se debe realizar mediante un script de migración o inyección en el bloque `lifespan` de `main.py`.
 
+### Impresión de Etiquetas y QZ Tray (Hardware)
+Para la integración con impresoras Zebra de etiquetas (ej. Zebra ZT230 a 203 dpi), el sistema implementa la librería **QZ Tray** para enviar comandos **ZPL II** nativos directamente al puerto físico (USB/Ethernet) sin requerir descargas de archivos o PDFs intermediarios.
+
+1. **Configuración de Seguridad:**
+   - La clave privada (`private-key.pem`) y el certificado público (`digital-certificate.txt`) deben ubicarse en la raíz del backend.
+   - El backend expone `/api/qz/certificate` para servir el certificado, y `/api/qz/sign` para firmar digitalmente la sesión iniciada por el cliente web de QZ Tray de forma segura.
+
+2. **Plantillas ZPL:**
+   - Las etiquetas se diseñan usando lenguaje ZPL II estándar combinando variables estilo Jinja2/Nunjucks (ej. `{{ producto.nombre }}`, `{{ etiqueta.senasa_nro }}`).
+   - La resolución predeterminada está configurada en **203 dpi** para etiquetas de **95 × 95 mm** (760 × 760 dots).
+
+3. **Operación de Impresión:**
+   - Al imprimir en el frontend, se cargan los datos del producto y su etiqueta, se renderiza la plantilla usando Nunjucks en local, y se envía el texto crudo ZPL a la impresora seleccionada en la configuración de la PC cliente (driver sugerido: `ZDesigner ZT230-203dpi ZPL`).
+
 ## ✨ Características Principales
 
 ### 🛒 Ventas
@@ -84,6 +98,11 @@ Para agregar un nuevo módulo al menú, se debe realizar mediante un script de m
 - **Ajustes de Stock:** Movimientos de entrada y salida manuales. Estos son los **únicos** registros que afectan la tabla `stk_mov`.
 - **Control de Productos:** Categorización por rubros, gestión de tasas de IVA y múltiples listas de precios.
 - **Ingreso por Scanner**: Interfaz optimizada para tablets y colectores de datos que permite procesar la entrada de mercadería contra remitos de compra mediante la lectura del ID (código de barras), agrupando los artículos por familia. El sistema soporta un formato delimitado simple para capturar trazabilidad: `ID|LOTE` (ej. `45|20240511-001`).
+- **Impresión de Etiquetas Zebra (QZ Tray):** Integración nativa con hardware de impresión Zebra (especialmente calibrado para **Zebra ZT230** a 203 dpi) utilizando **QZ Tray** y lenguaje **ZPL II**.
+  - **Datos Bromatológicos/Fiscales:** Asignación 1-a-1 de información nutricional detallada (porción, calorías, macronutrientes), números de registro (SENASA, RNPA) y textos de conservación o ingredientes por producto.
+  - **Plantillas Dinámicas ZPL:** Administración de formatos de etiqueta desde el editor de plantillas integrado del sistema mediante plantillas Jinja2/ZPL editables (`ETIQUETA_ZPL`).
+  - **Renderizado del Cliente:** Uso de Nunjucks.js en el frontend para inyectar variables dinámicas de impresión en tiempo real (fecha de elaboración, lote, copias) sin necesidad de procesar los datos en el backend.
+  - **Firma Digital Segura:** Conexión segura autenticada mediante endpoints dedicados en el backend (`/api/qz/certificate` y `/api/qz/sign`) que proveen y firman los tokens con la clave privada de QZ Tray.
 - **Regla de Oro de Stock**: Los Remitos (Venta/Compra) afectan directamente el campo `stock_actual` de la tabla `productos` si así se indica, pero **no deben generar registros en `stk_mov`**. Dicha tabla es exclusiva para auditoría de ajustes manuales.
 
 ### 🤝 Compras y Proveedores

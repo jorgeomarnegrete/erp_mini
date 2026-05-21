@@ -3,6 +3,16 @@ from typing import List, Optional
 from schemas.categoria import CategoriaResponse
 from schemas.tasa_iva import TasaIvaResponse
 from schemas.lista_precio import ListaPrecioResponse
+from datetime import datetime
+
+class ProductoLoteResponse(BaseModel):
+    id: int
+    nro_lote: Optional[str] = None
+    fecha_vencimiento: Optional[datetime] = None
+    cantidad_actual: float
+
+    class Config:
+        from_attributes = True
 
 # Modelo para los Precios Overrides (Estructura de la Casilla Manual)
 class ProductoPrecioBase(BaseModel):
@@ -56,6 +66,7 @@ class ProductoResponse(ProductoBase):
     categoria: CategoriaResponse
     tasa_iva: TasaIvaResponse
     precios_personalizados: List[ProductoPrecioResponse]
+    lotes: List[ProductoLoteResponse] = []
 
     class Config:
         from_attributes = True

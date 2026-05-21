@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { Package, Edit, Trash2, Plus, X, Search, Tags, Calculator, PercentCircle } from 'lucide-react';
+import { Package, Edit, Trash2, Plus, X, Search, Tags, Calculator, PercentCircle, Printer, Save, Link2 } from 'lucide-react';
+import nunjucks from 'nunjucks';
 
 export default function Productos() {
   const [productos, setProductos] = useState([]);
@@ -24,6 +25,25 @@ export default function Productos() {
   });
   
   const [formError, setFormError] = useState('');
+
+  // Etiqueta Modal State
+  const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
+  const [labelTab, setLabelTab] = useState('datos');
+  const [currentProd, setCurrentProd] = useState(null);
+  const [labelForm, setLabelForm] = useState({
+    descripcion_larga: '', senasa_nro: '', rnpa_nro: '', industria_argentina: true, peso_neto: '',
+    porcion_descripcion: '', valor_energetico_kcal: '', valor_energetico_kj: '', valor_energetico_vd: '',
+    carbohidratos_g: '', carbohidratos_vd: '', proteinas_g: '', proteinas_vd: '',
+    grasas_totales_g: '', grasas_totales_vd: '', grasas_saturadas_g: '', grasas_saturadas_vd: '',
+    grasas_trans_g: '', fibra_alimentaria_g: '', fibra_alimentaria_vd: '',
+    sodio_mg: '', sodio_vd: '', ingredientes: '', conservacion: '',
+    elaborado_por: '', para_establecimiento: '', codigo_ep: '', codigo_hm: ''
+  });
+  const [printForm, setPrintForm] = useState({
+    fecha_elaboracion: new Date().toISOString().split('T')[0],
+    nro_lote: '', cantidad_copias: 1, printer_name: 'ZDesigner ZT230-203dpi ZPL'
+  });
+  const [qzConnected, setQzConnected] = useState(false);
 
   const fetchAllData = async () => {
     try {
@@ -58,6 +78,97 @@ export default function Productos() {
     setFormData(getEmptyForm());
     setFormError('');
     setIsModalOpen(true);
+  };
+
+  const openLabelModal = async (prod) => {
+    setCurrentProd(prod);
+    setLabelTab('datos');
+    setFormError('');
+    try {
+      const res = await api.get(`/api/productos/${prod.id}/etiqueta`);
+      setLabelForm(res.data);
+    } catch (err) {
+      if (err.response?.status === 404) {
+        setLabelForm({
+          descripcion_larga: '', senasa_nro: '', rnpa_nro: '', industria_argentina: true, peso_neto: '',
+          porcion_descripcion: '', valor_energetico_kcal: '', valor_energetico_kj: '', valor_energetico_vd: '',
+          carbohidratos_g: '', carbohidratos_vd: '', proteinas_g: '', proteinas_vd: '',
+          grasas_totales_g: '', grasas_totales_vd: '', grasas_saturadas_g: '', grasas_saturadas_vd: '',
+          grasas_trans_g: '', fibra_alimentaria_g: '', fibra_alimentaria_vd: '',
+          sodio_mg: '', sodio_vd: '', ingredientes: '', conservacion: '',
+          elaborado_por: '', para_establecimiento: '', codigo_ep: '', codigo_hm: ''
+        });
+      }
+    }
+    setIsLabelModalOpen(true);
+  };
+
+  const handleSaveLabel = async (e) => {
+    e.preventDefault();
+    try {
+      await api.put(`/api/productos/${currentProd.id}/etiqueta`, labelForm);
+      alert('Etiqueta guardada con éxito');
+    } catch (err) {
+      setFormError('Error guardando etiqueta');
+    }
+  };
+
+  const connectQZ = async () => {
+    try {
+      if (!window.qz) throw new Error("QZ Tray no está cargado. Verifique index.html");
+      
+      qz.security.setCertificatePromise((resolve, reject) => {
+        api.get('/api/qz/certificate').then(res => resolve(res.data)).catch(reject);
+      });
+      qz.security.setSignatureAlgorithm("SHA512");
+      qz.security.setSignaturePromise((toSign) => {
+        return (resolve, reject) => {
+          api.post('/api/qz/sign', { message: toSign })
+             .then(res => resolve(res.data))
+             .catch(reject);
+        };
+      });
+
+      if (!qz.websocket.isActive()) {
+        await qz.websocket.connect();
+      }
+      setQzConnected(true);
+    } catch (err) {
+      alert("Error conectando a QZ Tray: " + err);
+    }
+  };
+
+  const handlePrintLabel = async () => {
+    try {
+      if (!qzConnected) await connectQZ();
+      
+      const res = await api.get('/api/plantillas');
+      const zplTemplate = res.data.find(p => p.tipo_documento === 'ETIQUETA_ZPL');
+      if (!zplTemplate || !zplTemplate.codigo_zpl) throw new Error("Plantilla ETIQUETA_ZPL no configurada");
+
+      nunjucks.configure({ autoescape: false });
+      const context = {
+        producto: currentProd,
+        etiqueta: labelForm,
+        fecha_elaboracion: printForm.fecha_elaboracion,
+        nro_lote: printForm.nro_lote,
+        cantidad_copias: printForm.cantidad_copias
+      };
+      const renderedZpl = nunjucks.renderString(zplTemplate.codigo_zpl, context);
+
+      let cfgName = printForm.printer_name;
+      let qzConfig;
+      if (cfgName.includes(".")) {
+         qzConfig = qz.configs.create(cfgName, { port: 9100, encoding: null, copies: 1 });
+      } else {
+         qzConfig = qz.configs.create(cfgName, { encoding: null, copies: 1 });
+      }
+      
+      await qz.print(qzConfig, [{ type: 'raw', format: 'plain', data: renderedZpl }]);
+      alert("Enviado a impresora con éxito.");
+    } catch (err) {
+      alert("Error al imprimir: " + err);
+    }
   };
 
   const openEditModal = (prod) => {
@@ -252,6 +363,9 @@ export default function Productos() {
                 </td>
                 
                 <td className="px-6 py-4 whitespace-nowrap text-center space-x-2">
+                  <button onClick={() => openLabelModal(prod)} className="text-teal-600 bg-teal-50 p-2 rounded-lg hover:bg-teal-600 hover:text-white transition-all shadow-sm" title="Imprimir Etiqueta">
+                    <Printer className="w-5 h-5" />
+                  </button>
                   <button onClick={() => openEditModal(prod)} className="text-indigo-600 bg-indigo-50 p-2 rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="Editar">
                     <Edit className="w-5 h-5" />
                   </button>
@@ -444,6 +558,135 @@ export default function Productos() {
                 <button type="submit" form="producto-form" className="px-8 py-3 flex items-center text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl font-black shadow-lg transition-transform active:scale-95">
                   <Package className="w-5 h-5 mr-2" /> {modalMode === 'create' ? 'Guardar Producto' : 'Actualizar Producto'}
                 </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {isLabelModalOpen && (
+        <div className="fixed inset-0 z-50 flex justify-center p-4 bg-gray-900/60 backdrop-blur-md overflow-y-auto w-full h-full pb-20 pt-10">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl flex flex-col m-auto h-auto min-h-min border border-gray-100">
+            <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-teal-50 to-white flex justify-between items-center rounded-t-3xl sticky top-0 z-10">
+              <h3 className="text-2xl font-black text-gray-900 flex items-center">
+                <Printer className="w-7 h-7 mr-3 text-teal-600" />
+                Etiqueta — {currentProd?.nombre}
+              </h3>
+              <button type="button" onClick={() => setIsLabelModalOpen(false)} className="text-gray-400 hover:text-red-500 bg-white shadow-sm border p-2 rounded-full transition-all">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="flex border-b border-gray-200">
+               <button onClick={() => setLabelTab('datos')} className={`flex-1 py-3 font-bold text-sm text-center ${labelTab === 'datos' ? 'text-teal-600 border-b-2 border-teal-600 bg-teal-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}>Datos de Etiqueta</button>
+               <button onClick={() => setLabelTab('imprimir')} className={`flex-1 py-3 font-bold text-sm text-center ${labelTab === 'imprimir' ? 'text-teal-600 border-b-2 border-teal-600 bg-teal-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}>Imprimir en Zebra</button>
+            </div>
+            
+            <div className="p-8 pb-10 overflow-x-hidden overflow-y-auto w-full custom-scrollbar flex-1">
+                {labelTab === 'datos' && (
+                  <form id="label-form" onSubmit={handleSaveLabel} className="space-y-6">
+                    <h4 className="text-lg font-bold text-gray-800 border-b pb-2">Identificación Fiscal</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                       <input type="text" placeholder="Descripción Larga" value={labelForm.descripcion_larga || ''} onChange={e => setLabelForm({...labelForm, descripcion_larga: e.target.value})} className="col-span-2 px-4 py-2 rounded-lg border focus:ring-2 focus:ring-teal-500" />
+                       <input type="text" placeholder="SENASA N°" value={labelForm.senasa_nro || ''} onChange={e => setLabelForm({...labelForm, senasa_nro: e.target.value})} className="px-4 py-2 rounded-lg border" />
+                       <input type="text" placeholder="RNPA N°" value={labelForm.rnpa_nro || ''} onChange={e => setLabelForm({...labelForm, rnpa_nro: e.target.value})} className="px-4 py-2 rounded-lg border" />
+                       <input type="text" placeholder="Peso Neto (ej. 6 KG)" value={labelForm.peso_neto || ''} onChange={e => setLabelForm({...labelForm, peso_neto: e.target.value})} className="px-4 py-2 rounded-lg border" />
+                       <label className="flex items-center space-x-2 font-bold text-sm text-gray-700">
+                          <input type="checkbox" checked={labelForm.industria_argentina} onChange={e => setLabelForm({...labelForm, industria_argentina: e.target.checked})} className="w-5 h-5 text-teal-600 rounded" />
+                          <span>Industria Argentina</span>
+                       </label>
+                    </div>
+
+                    <h4 className="text-lg font-bold text-gray-800 border-b pb-2 mt-6">Tabla Nutricional</h4>
+                    <input type="text" placeholder="Porción (ej. 130 gr / 1 unidad)" value={labelForm.porcion_descripcion || ''} onChange={e => setLabelForm({...labelForm, porcion_descripcion: e.target.value})} className="w-full px-4 py-2 rounded-lg border mb-4" />
+                    <div className="grid grid-cols-3 gap-2">
+                       <input type="number" placeholder="Kcal" value={labelForm.valor_energetico_kcal || ''} onChange={e => setLabelForm({...labelForm, valor_energetico_kcal: parseFloat(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+                       <input type="number" placeholder="KJ" value={labelForm.valor_energetico_kj || ''} onChange={e => setLabelForm({...labelForm, valor_energetico_kj: parseFloat(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+                       <input type="number" placeholder="% VD Energía" value={labelForm.valor_energetico_vd || ''} onChange={e => setLabelForm({...labelForm, valor_energetico_vd: parseInt(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+                       
+                       <input type="number" placeholder="Carbo (g)" value={labelForm.carbohidratos_g || ''} onChange={e => setLabelForm({...labelForm, carbohidratos_g: parseFloat(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+                       <div className="hidden"></div>
+                       <input type="number" placeholder="% VD Carbo" value={labelForm.carbohidratos_vd || ''} onChange={e => setLabelForm({...labelForm, carbohidratos_vd: parseInt(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+                       
+                       <input type="number" placeholder="Prot (g)" value={labelForm.proteinas_g || ''} onChange={e => setLabelForm({...labelForm, proteinas_g: parseFloat(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+                       <div className="hidden"></div>
+                       <input type="number" placeholder="% VD Prot" value={labelForm.proteinas_vd || ''} onChange={e => setLabelForm({...labelForm, proteinas_vd: parseInt(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+
+                       <input type="number" placeholder="G. Tot (g)" value={labelForm.grasas_totales_g || ''} onChange={e => setLabelForm({...labelForm, grasas_totales_g: parseFloat(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+                       <div className="hidden"></div>
+                       <input type="number" placeholder="% VD G. Tot" value={labelForm.grasas_totales_vd || ''} onChange={e => setLabelForm({...labelForm, grasas_totales_vd: parseInt(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+
+                       <input type="number" placeholder="G. Sat (g)" value={labelForm.grasas_saturadas_g || ''} onChange={e => setLabelForm({...labelForm, grasas_saturadas_g: parseFloat(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+                       <div className="hidden"></div>
+                       <input type="number" placeholder="% VD G. Sat" value={labelForm.grasas_saturadas_vd || ''} onChange={e => setLabelForm({...labelForm, grasas_saturadas_vd: parseInt(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+
+                       <input type="number" placeholder="G. Trans (g)" value={labelForm.grasas_trans_g || ''} onChange={e => setLabelForm({...labelForm, grasas_trans_g: parseFloat(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+                       <div className="hidden"></div>
+                       <div className="hidden"></div>
+
+                       <input type="number" placeholder="Fibra (g)" value={labelForm.fibra_alimentaria_g || ''} onChange={e => setLabelForm({...labelForm, fibra_alimentaria_g: parseFloat(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+                       <div className="hidden"></div>
+                       <input type="number" placeholder="% VD Fibra" value={labelForm.fibra_alimentaria_vd || ''} onChange={e => setLabelForm({...labelForm, fibra_alimentaria_vd: parseInt(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+
+                       <input type="number" placeholder="Sodio (mg)" value={labelForm.sodio_mg || ''} onChange={e => setLabelForm({...labelForm, sodio_mg: parseFloat(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+                       <div className="hidden"></div>
+                       <input type="number" placeholder="% VD Sodio" value={labelForm.sodio_vd || ''} onChange={e => setLabelForm({...labelForm, sodio_vd: parseInt(e.target.value)})} className="px-3 py-1 rounded border text-sm" />
+                    </div>
+
+                    <h4 className="text-lg font-bold text-gray-800 border-b pb-2 mt-6">Textos Legales y Establecimiento</h4>
+                    <textarea placeholder="Ingredientes" value={labelForm.ingredientes || ''} onChange={e => setLabelForm({...labelForm, ingredientes: e.target.value})} className="w-full px-4 py-2 rounded-lg border h-20" />
+                    <textarea placeholder="Conservación" value={labelForm.conservacion || ''} onChange={e => setLabelForm({...labelForm, conservacion: e.target.value})} className="w-full px-4 py-2 rounded-lg border h-20" />
+                    <div className="grid grid-cols-2 gap-4">
+                       <input type="text" placeholder="Elaborado por" value={labelForm.elaborado_por || ''} onChange={e => setLabelForm({...labelForm, elaborado_por: e.target.value})} className="px-4 py-2 rounded-lg border" />
+                       <input type="text" placeholder="Para establecimiento" value={labelForm.para_establecimiento || ''} onChange={e => setLabelForm({...labelForm, para_establecimiento: e.target.value})} className="px-4 py-2 rounded-lg border" />
+                       <input type="text" placeholder="Cód. EP" value={labelForm.codigo_ep || ''} onChange={e => setLabelForm({...labelForm, codigo_ep: e.target.value})} className="px-4 py-2 rounded-lg border" />
+                       <input type="text" placeholder="Cód. HM" value={labelForm.codigo_hm || ''} onChange={e => setLabelForm({...labelForm, codigo_hm: e.target.value})} className="px-4 py-2 rounded-lg border" />
+                    </div>
+                    <div className="flex justify-end pt-4">
+                       <button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-6 rounded-xl flex items-center shadow-md"><Save className="w-5 h-5 mr-2" /> Guardar Etiqueta</button>
+                    </div>
+                  </form>
+                )}
+
+                {labelTab === 'imprimir' && (
+                  <div className="space-y-6">
+                    <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                       <h4 className="font-bold text-gray-800 mb-4 flex items-center"><Link2 className="w-5 h-5 mr-2 text-gray-500" /> Configuración de Impresora Zebra (QZ Tray)</h4>
+                       <div className="grid grid-cols-2 gap-4">
+                          <div>
+                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre Impresora (o IP)</label>
+                             <input type="text" value={printForm.printer_name} onChange={e => setPrintForm({...printForm, printer_name: e.target.value})} className="w-full px-4 py-2 rounded-lg border font-mono text-sm" />
+                          </div>
+                          <div className="flex items-end">
+                             <button onClick={connectQZ} className={`px-4 py-2 rounded-lg font-bold text-sm w-full ${qzConnected ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+                                {qzConnected ? '✓ Conectado a QZ Tray' : 'Conectar a QZ Tray'}
+                             </button>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="bg-teal-50/50 p-6 rounded-xl border border-teal-100">
+                       <h4 className="font-bold text-teal-800 mb-4">Datos Dinámicos de Impresión</h4>
+                       <div className="grid grid-cols-2 gap-4">
+                          <div>
+                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Fecha Elaboración</label>
+                             <input type="date" value={printForm.fecha_elaboracion} onChange={e => setPrintForm({...printForm, fecha_elaboracion: e.target.value})} className="w-full px-4 py-2 rounded-lg border" />
+                          </div>
+                          <div>
+                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nro. Lote</label>
+                             <input type="text" value={printForm.nro_lote} onChange={e => setPrintForm({...printForm, nro_lote: e.target.value})} className="w-full px-4 py-2 rounded-lg border font-mono font-bold" />
+                          </div>
+                          <div className="col-span-2">
+                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Cantidad de copias a imprimir</label>
+                             <input type="number" min="1" value={printForm.cantidad_copias} onChange={e => setPrintForm({...printForm, cantidad_copias: parseInt(e.target.value)})} className="w-1/3 px-4 py-2 rounded-lg border text-xl font-black" />
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="flex justify-end pt-4">
+                       <button onClick={handlePrintLabel} className="bg-teal-600 hover:bg-teal-700 text-white font-black py-3 px-8 rounded-xl flex items-center shadow-lg transform transition active:scale-95 text-lg">
+                          <Printer className="w-6 h-6 mr-3" /> ENVIAR A ZEBRA
+                       </button>
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
         </div>

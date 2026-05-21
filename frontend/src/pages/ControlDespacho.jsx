@@ -55,33 +55,54 @@ export default function ControlDespacho() {
 
   const handleScan = (e) => {
     if (e.key === 'Enter') {
-      const productId = parseInt(scanBuffer);
-      processScan(productId);
+      processScan(scanBuffer.trim());
       setScanBuffer('');
-    } else if (/^\d$/.test(e.key)) {
+    } else if (e.key.length === 1) { // Aceptar cualquier caracter alfanumérico o especial (como |)
       setScanBuffer(prev => prev + e.key);
     }
   };
 
-  const processScan = (productId) => {
-    const expectedItem = carga.find(c => c.producto_id === productId);
+  const processScan = (raw) => {
+    if (!raw) return;
+
+    let productId = null;
+    let nroLote = null;
+
+    if (raw.includes('|')) {
+      const parts = raw.split('|');
+      productId = parseInt(parts[0]);
+      nroLote = parts[1];
+    } else {
+      productId = parseInt(raw);
+    }
+
+    if (isNaN(productId)) {
+       setErrorMsg(`Código Inválido: ${raw}`);
+       playAudio('error');
+       return;
+    }
+
+    // Buscar ítem por producto y lote
+    const expectedItem = carga.find(c => c.producto_id === productId && (!nroLote || c.nro_lote === nroLote));
     
     if (!expectedItem) {
-      setErrorMsg(`Producto ID ${productId} no pertenece a este transporte`);
+      setErrorMsg(`Producto ${productId}${nroLote ? ' Lote ' + nroLote : ''} no pertenece a este transporte`);
       playAudio('error');
       return;
     }
 
-    const currentScanned = scannedItems[productId] || 0;
+    const itemKey = `${expectedItem.producto_id}|${expectedItem.nro_lote || ''}`;
+    const currentScanned = scannedItems[itemKey] || 0;
+    
     if (currentScanned >= expectedItem.cantidad_esperada) {
-      setErrorMsg(`Límite alcanzado para: ${expectedItem.nombre}`);
+      setErrorMsg(`Límite alcanzado para: ${expectedItem.nombre} ${expectedItem.nro_lote || ''}`);
       playAudio('error');
       return;
     }
 
     setScannedItems(prev => ({
       ...prev,
-      [productId]: (prev[productId] || 0) + 1
+      [itemKey]: (prev[itemKey] || 0) + 1
     }));
     setLastScanned(expectedItem);
     setErrorMsg(null);
@@ -114,10 +135,14 @@ export default function ControlDespacho() {
     
     const payload = {
       transporte_id: selectedTransporte.id,
-      items_escaneados: Object.entries(scannedItems).map(([id, cant]) => ({
-        producto_id: parseInt(id),
-        cantidad: cant
-      }))
+      items_escaneados: Object.entries(scannedItems).map(([key, cant]) => {
+        const [prodId, lote] = key.split('|');
+        return {
+          producto_id: parseInt(prodId),
+          nro_lote: lote || null,
+          cantidad: cant
+        };
+      })
     };
 
     try {
@@ -131,7 +156,7 @@ export default function ControlDespacho() {
     }
   };
 
-  const isComplete = carga.every(c => (scannedItems[c.producto_id] || 0) === c.cantidad_esperada);
+  const isComplete = carga.every(c => (scannedItems[`${c.producto_id}|${c.nro_lote || ''}`] || 0) === c.cantidad_esperada);
 
   if (!selectedTransporte) {
     return (
@@ -208,8 +233,11 @@ export default function ControlDespacho() {
           <div className="animate-in fade-in zoom-in duration-300">
             <div className="text-xs font-bold opacity-70 uppercase tracking-widest mb-1">ÚLTIMO ESCANEADO</div>
             <div className="text-3xl font-black leading-none">{lastScanned.nombre}</div>
+            {lastScanned.nro_lote && (
+               <div className="text-sm font-black bg-white/20 px-2 py-0.5 rounded mt-1 inline-block">LOTE: {lastScanned.nro_lote}</div>
+            )}
             <div className="text-5xl font-black mt-2">
-              {scannedItems[lastScanned.producto_id]} <span className="text-lg opacity-60">/ {lastScanned.cantidad_esperada}</span>
+              {scannedItems[`${lastScanned.producto_id}|${lastScanned.nro_lote || ''}`]} <span className="text-lg opacity-60">/ {lastScanned.cantidad_esperada}</span>
             </div>
           </div>
         ) : (
@@ -221,13 +249,19 @@ export default function ControlDespacho() {
       <div className="flex-1 overflow-y-auto custom-scrollbar bg-white rounded-3xl shadow-sm border border-gray-100">
         <div className="divide-y divide-gray-100">
           {carga.map(item => {
-            const count = scannedItems[item.producto_id] || 0;
+            const itemKey = `${item.producto_id}|${item.nro_lote || ''}`;
+            const count = scannedItems[itemKey] || 0;
             const isDone = count === item.cantidad_esperada;
             return (
-              <div key={item.producto_id} className={`p-6 flex items-center justify-between transition-colors ${isDone ? 'bg-green-50' : ''}`}>
+              <div key={itemKey} className={`p-6 flex items-center justify-between transition-colors ${isDone ? 'bg-green-50' : ''}`}>
                 <div>
                   <div className={`font-bold ${isDone ? 'text-green-700' : 'text-gray-800'}`}>{item.nombre}</div>
-                  <div className="text-xs text-gray-400 font-mono">ID: {item.producto_id}</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-gray-400 font-mono bg-gray-50 px-1 rounded">ID: {item.producto_id}</span>
+                    {item.nro_lote && (
+                      <span className="text-[10px] font-black text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100">LOTE: {item.nro_lote}</span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center space-x-4">
                   <div className="text-right">

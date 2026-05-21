@@ -25,7 +25,7 @@ import models.remito
 import models.remito_compra
 import models.transporte
 import models.carga_preparacion
-from routers import pedidos, remitos, remitos_compra, transporte, carga_preparacion, logistica_control, qz
+from routers import pedidos, remitos, remitos_compra, transporte, carga_preparacion, logistica_control, qz, producto_etiqueta
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -44,6 +44,13 @@ async def lifespan(app: FastAPI):
         # Nuevos campos de vencimiento
         db.execute(text("ALTER TABLE remito_compra_detalles ADD COLUMN IF NOT EXISTS nro_lote VARCHAR"))
         db.execute(text("ALTER TABLE remito_compra_detalles ADD COLUMN IF NOT EXISTS fecha_vencimiento TIMESTAMP"))
+        # Trazabilidad en Remitos de Venta
+        db.execute(text("ALTER TABLE remito_detalles ADD COLUMN IF NOT EXISTS nro_lote VARCHAR"))
+        db.execute(text("ALTER TABLE remito_detalles ADD COLUMN IF NOT EXISTS fecha_vencimiento TIMESTAMP"))
+        # Trazabilidad en Preparación de Carga
+        db.execute(text("ALTER TABLE carga_preparacion ADD COLUMN IF NOT EXISTS nro_lote VARCHAR"))
+        # Migración para ZPL en Plantillas
+        db.execute(text("ALTER TABLE plantillas_documentos ADD COLUMN IF NOT EXISTS codigo_zpl TEXT"))
         db.commit()
     except Exception as e:
         db.rollback()
@@ -268,6 +275,43 @@ async def lifespan(app: FastAPI):
         """
         p_coti = models.plantilla.PlantillaDocumento(nombre="Cotización Estándar", tipo_documento="COTIZACION", codigo_html=html_base, activa=True)
         db.add(p_coti)
+        db.commit()
+
+    # 1.5 Etiqueta ZPL
+    if db.query(models.plantilla.PlantillaDocumento).filter(models.plantilla.PlantillaDocumento.tipo_documento == "ETIQUETA_ZPL").count() == 0:
+        zpl_base = """^XA
+^PW760^LL760
+^MMT
+^PR4
+^MD10
+^LH0,0
+^CI28
+^CF0,35^FO30,20^FD{{ producto.nombre }}^FS
+^CF0,22^FO30,65^FD{{ etiqueta.descripcion_larga }}^FS
+^FO30,100^GB700,2,2^FS
+^CF0,18
+^FO30,110^FDSENASA Nº {{ etiqueta.senasa_nro }}   RNPA Nº {{ etiqueta.rnpa_nro }}^FS
+^FO30,135^FDFECHA DE ELABORACIÓN: {{ fecha_elaboracion }}^FS
+^FO30,158^FDLOTE: {{ nro_lote }}   PESO NETO: {{ etiqueta.peso_neto }}^FS
+^FO30,180^GB700,2,2^FS
+^CF0,20^FO30,200^FDInformación Nutricional: Porción {{ etiqueta.porcion_descripcion }}^FS
+^CF0,18^FO30,230^FDValor Energético: {{ etiqueta.valor_energetico_kcal }} kcal / {{ etiqueta.valor_energetico_kj }} kj ({{ etiqueta.valor_energetico_vd }} %VD)^FS
+^FO30,255^FDCarbohidratos: {{ etiqueta.carbohidratos_g }} g ({{ etiqueta.carbohidratos_vd }} %VD)^FS
+^FO30,280^FDProteínas: {{ etiqueta.proteinas_g }} g ({{ etiqueta.proteinas_vd }} %VD)^FS
+^FO30,305^FDGrasas Totales: {{ etiqueta.grasas_totales_g }} g ({{ etiqueta.grasas_totales_vd }} %VD)^FS
+^FO30,330^FDGrasas Saturadas: {{ etiqueta.grasas_saturadas_g }} g ({{ etiqueta.grasas_saturadas_vd }} %VD)^FS
+^FO30,355^FDGrasas Trans: {{ etiqueta.grasas_trans_g }} g^FS
+^FO30,380^FDFibra Alimentaria: {{ etiqueta.fibra_alimentaria_g }} g ({{ etiqueta.fibra_alimentaria_vd }} %VD)^FS
+^FO30,405^FDSodio: {{ etiqueta.sodio_mg }} mg ({{ etiqueta.sodio_vd }} %VD)^FS
+^FO30,430^GB700,2,2^FS
+^CF0,18^FO30,440^FB700,4,0,L,0^FDIngredientes: {{ etiqueta.ingredientes }}^FS
+^CF0,18^FO30,520^FB700,3,0,L,0^FDConservación: {{ etiqueta.conservacion }}^FS
+^FO30,720^FDElaborado por: {{ etiqueta.elaborado_por }}  Para Establecimiento: {{ etiqueta.para_establecimiento }}^FS
+^FO580,700^FD{{ etiqueta.codigo_ep }}  {{ etiqueta.codigo_hm }}^FS
+^PQ{{ cantidad_copias }}
+^XZ"""
+        p_etq = models.plantilla.PlantillaDocumento(nombre="Etiqueta Zebra ZT230 95x95", tipo_documento="ETIQUETA_ZPL", codigo_html="", codigo_zpl=zpl_base, activa=True)
+        db.add(p_etq)
         db.commit()
 
     # 2. Remito
@@ -655,3 +699,4 @@ app.include_router(qz.router)
 app.include_router(transporte.router)
 app.include_router(carga_preparacion.router)
 app.include_router(logistica_control.router)
+app.include_router(producto_etiqueta.router)

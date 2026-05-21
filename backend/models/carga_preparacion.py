@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Boolean, ForeignKey, Float
+from sqlalchemy import Column, Integer, Boolean, ForeignKey, Float, String
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -10,6 +10,7 @@ class CargaPreparacion(Base):
     producto_id = Column(Integer, ForeignKey("productos.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
     cantidad = Column(Float, nullable=False)
+    nro_lote = Column(String, nullable=True)
     preparado = Column(Boolean, default=False)
     
     transporte = relationship("Transporte")

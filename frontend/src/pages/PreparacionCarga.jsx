@@ -9,6 +9,7 @@ export default function PreparacionCarga() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filterFamilia, setFilterFamilia] = useState('Todas');
+  const [scanValue, setScanValue] = useState('');
 
   useEffect(() => {
     const fetchTransportes = async () => {
@@ -56,6 +57,38 @@ export default function PreparacionCarga() {
     } catch (error) {
       alert('Error al finalizar');
     }
+  };
+
+  const handleScan = (e) => {
+    e.preventDefault();
+    const raw = scanValue.trim();
+    if (!raw) return;
+
+    let targetId = null;
+    let targetLote = null;
+
+    if (raw.includes('|')) {
+      const parts = raw.split('|');
+      targetId = parts[0];
+      targetLote = parts[1];
+    } else {
+      targetId = raw;
+    }
+
+    // Buscar ítem que coincida con el producto (ID o Código) y Lote (si vino en el scan)
+    const found = items.find(i => {
+      const matchesProd = String(i.producto_id) === targetId || i.producto?.codigo_interno === targetId || i.producto?.codigo_barras === targetId;
+      const matchesLote = !targetLote || i.nro_lote === targetLote;
+      return matchesProd && matchesLote && !i.preparado;
+    });
+
+    if (found) {
+      handleToggleItem(found.id);
+    } else {
+      // Feedback visual/sonoro de error podría ir aquí
+      console.warn("Producto/Lote no encontrado en esta carga o ya preparado");
+    }
+    setScanValue('');
   };
 
   const familias = ['Todas', ...new Set(items.map(i => i.producto?.categoria?.nombre || 'Sin Categoría'))];
@@ -128,6 +161,21 @@ export default function PreparacionCarga() {
           <div className="w-9" /> {/* Spacer */}
         </div>
 
+        {/* Scanner Input */}
+        <div className="px-2">
+          <form onSubmit={handleScan} className="relative">
+            <LucideIcons.ScanBarcode className="absolute left-4 top-3.5 w-6 h-6 text-indigo-500" />
+            <input 
+              autoFocus
+              type="text"
+              placeholder="Escanear ID|LOTE para preparar..."
+              className="w-full pl-12 pr-4 py-3 bg-white rounded-2xl border-2 border-indigo-100 focus:border-indigo-500 outline-none font-bold shadow-inner"
+              value={scanValue}
+              onChange={e => setScanValue(e.target.value)}
+            />
+          </form>
+        </div>
+
         {/* Filtro de Familias Scrollable */}
         <div className="flex space-x-2 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
           {familias.map(f => (
@@ -168,6 +216,11 @@ export default function PreparacionCarga() {
                       <div className={`font-bold text-lg ${item.preparado ? 'text-green-700 line-through' : 'text-gray-800'}`}>
                         {item.producto?.nombre}
                       </div>
+                      {item.nro_lote && (
+                        <div className="text-[10px] font-black text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 inline-block mt-0.5">
+                          LOTE: {item.nro_lote}
+                        </div>
+                      )}
                       <div className="flex items-center mt-1">
                         <span className="text-2xl font-black text-gray-900 mr-2">{item.cantidad}</span>
                         <span className="text-xs font-bold text-gray-400 uppercase">Unidades</span>

@@ -55,3 +55,46 @@ class ProductoLoteStock(Base):
     cantidad_actual = Column(Float, default=0.0)
     
     producto = relationship("Producto", back_populates="lotes")
+
+class ProductoEtiqueta(Base):
+    """Configuración de etiqueta bromatológica/fiscal por producto (1:1 con Producto)"""
+    __tablename__ = "producto_etiquetas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    producto_id = Column(Integer, ForeignKey("productos.id", ondelete="CASCADE"), unique=True, nullable=False)
+
+    # --- Identificación Fiscal ---
+    descripcion_larga     = Column(Text, nullable=True)
+    senasa_nro            = Column(String, nullable=True)   # "3256/4430D/1"
+    rnpa_nro              = Column(String, nullable=True)   # "4048/21054"
+    industria_argentina   = Column(Boolean, default=True)
+    peso_neto             = Column(String, nullable=True)   # "6 KG" (texto libre)
+
+    # --- Tabla Nutricional (por porción) ---
+    porcion_descripcion   = Column(String, nullable=True)   # "130 gr / 1 unidad"
+    valor_energetico_kcal = Column(Float, nullable=True)
+    valor_energetico_kj   = Column(Float, nullable=True)
+    valor_energetico_vd   = Column(Integer, nullable=True)
+    carbohidratos_g       = Column(Float, nullable=True)
+    carbohidratos_vd      = Column(Integer, nullable=True)
+    proteinas_g           = Column(Float, nullable=True)
+    proteinas_vd          = Column(Integer, nullable=True)
+    grasas_totales_g      = Column(Float, nullable=True)
+    grasas_totales_vd     = Column(Integer, nullable=True)
+    grasas_saturadas_g    = Column(Float, nullable=True)
+    grasas_saturadas_vd   = Column(Integer, nullable=True)
+    grasas_trans_g        = Column(Float, nullable=True)    # sin %VD (siempre ".")
+    fibra_alimentaria_g   = Column(Float, nullable=True)
+    fibra_alimentaria_vd  = Column(Integer, nullable=True)
+    sodio_mg              = Column(Float, nullable=True)
+    sodio_vd              = Column(Integer, nullable=True)
+
+    # --- Textos Legales ---
+    ingredientes          = Column(Text, nullable=True)
+    conservacion          = Column(Text, nullable=True)     # multilinea con temperaturas
+    elaborado_por         = Column(String, nullable=True)   # varía por producto
+    para_establecimiento  = Column(String, nullable=True)   # varía por producto
+    codigo_ep             = Column(String, nullable=True)   # "EP005"
+    codigo_hm             = Column(String, nullable=True)   # "HM"
+
+    producto = relationship("Producto", backref="etiqueta", uselist=False)

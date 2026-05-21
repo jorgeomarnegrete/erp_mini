@@ -7,7 +7,7 @@ export default function PlantillasDocumentos() {
   const [plantillas, setPlantillas] = useState([]);
   const [selectedID, setSelectedID] = useState(null);
   
-  const [form, setForm] = useState({ nombre: '', tipo_documento: '', codigo_html: '', activa: true });
+  const [form, setForm] = useState({ nombre: '', tipo_documento: '', codigo_html: '', codigo_zpl: '', activa: true });
   const [isSaving, setIsSaving] = useState(false);
   const [isDone, setIsDone] = useState(false);
 
@@ -29,7 +29,7 @@ export default function PlantillasDocumentos() {
 
   const selectPlantilla = (p) => {
     setSelectedID(p.id);
-    setForm({ nombre: p.nombre, tipo_documento: p.tipo_documento, codigo_html: p.codigo_html, activa: p.activa });
+    setForm({ nombre: p.nombre, tipo_documento: p.tipo_documento, codigo_html: p.codigo_html, codigo_zpl: p.codigo_zpl || '', activa: p.activa });
     setIsDone(false);
   };
 
@@ -90,13 +90,16 @@ export default function PlantillasDocumentos() {
          <div className="w-2/3 h-full border-r border-slate-200 flex flex-col bg-slate-50">
             <div className="bg-slate-100 px-4 py-2 text-xs font-black text-slate-500 uppercase tracking-widest border-b flex justify-between">
                <span>Plantilla: {form.nombre}</span>
-               <span>HTML5 / CSS3 / Jinja2</span>
+               <span>{form.tipo_documento === 'ETIQUETA_ZPL' ? 'ZPL II / Jinja2' : 'HTML5 / CSS3 / Jinja2'}</span>
             </div>
             <textarea 
                spellCheck="false"
                className="flex-1 w-full p-6 bg-[#1e1e1e] text-[#d4d4d4] font-mono text-sm leading-relaxed outline-none resize-none"
-               value={form.codigo_html}
-               onChange={e => setForm({...form, codigo_html: e.target.value})}
+               value={form.tipo_documento === 'ETIQUETA_ZPL' ? form.codigo_zpl : form.codigo_html}
+               onChange={e => {
+                  if (form.tipo_documento === 'ETIQUETA_ZPL') setForm({...form, codigo_zpl: e.target.value});
+                  else setForm({...form, codigo_html: e.target.value});
+               }}
                style={{ tabSize: 4 }}
             />
          </div>
@@ -134,6 +137,23 @@ export default function PlantillasDocumentos() {
                     <p>{`{{ cliente.direccion }}, {{ cliente.localidad }}`}</p>
                  </div>
                </div>
+
+               {form.tipo_documento === 'ETIQUETA_ZPL' && (
+               <div>
+                 <h4 className="font-bold text-xs bg-teal-50 text-teal-700 p-2 rounded-t-lg border border-b-0 border-teal-200">ZPL: Variables Etiqueta</h4>
+                 <div className="border border-teal-200 p-3 rounded-b-lg font-mono text-[10px] text-teal-800 space-y-1 bg-teal-50/30">
+                    <p>{`{{ producto.nombre }}`}</p>
+                    <p>{`{{ etiqueta.senasa_nro }}`}</p>
+                    <p>{`{{ etiqueta.rnpa_nro }}`}</p>
+                    <p>{`{{ etiqueta.elaborado_por }}`}</p>
+                    <p>{`{{ etiqueta.valor_energetico_kcal }}`}</p>
+                    <p>{`{{ fecha_elaboracion }}`}</p>
+                    <p>{`{{ nro_lote }}`}</p>
+                    <p className="text-slate-400 mt-2 italic">// Cantidad de copias inyectada con QZ</p>
+                    <p>{`^PQ{{ cantidad_copias }}`}</p>
+                 </div>
+               </div>
+               )}
 
                <div>
                  <h4 className="font-bold text-xs bg-slate-100 text-slate-600 p-2 rounded-t-lg border border-b-0 border-slate-200">3. Detalles de Comprobante</h4>
