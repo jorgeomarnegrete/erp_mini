@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../App';
-import { Factory, Plus, Trash2, X, Save, Search, CheckCircle, Ban, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { Factory, Plus, Trash2, X, Save, Search, CheckCircle, Ban, ArrowDownCircle, ArrowUpCircle, Printer } from 'lucide-react';
 import ProductSearchModal from '../components/ProductSearchModal';
 
 const nuevoInsumo = () => ({ temp_id: Date.now() + Math.random(), producto_id: '', cantidad: 1, nro_lote: '', disponible: null, error_stock: false });
@@ -205,6 +205,16 @@ export default function OrdenesProduccion() {
     }
   };
 
+  const handlePrint = async (orden_id) => {
+    try {
+      const response = await api.get(`/api/ordenes-produccion/${orden_id}/pdf`, { responseType: 'blob' });
+      const fileURL = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      window.open(fileURL, '_blank');
+    } catch (err) {
+      alert('No se pudo generar el parte de producción.');
+    }
+  };
+
   const badgeEstado = (estado) => ({
     Abierta: 'bg-amber-100 text-amber-700',
     Cerrada: 'bg-green-100 text-green-700',
@@ -257,17 +267,22 @@ export default function OrdenesProduccion() {
                   <span className={`px-3 py-1 rounded-full text-xs font-bold ${badgeEstado(o.estado)}`}>{o.estado}</span>
                 </td>
                 <td className="px-8 py-4 whitespace-nowrap text-right">
-                  {o.estado === 'Abierta' && (
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => openCerrar(o)} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center shadow-sm">
-                        <CheckCircle className="w-4 h-4 mr-1" /> Cerrar
-                      </button>
-                      <button onClick={() => handleCancelar(o)} className="bg-white border border-red-200 text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center">
-                        <Ban className="w-4 h-4 mr-1" /> Cancelar
-                      </button>
-                    </div>
-                  )}
-                  {o.estado === 'Cerrada' && <span className="text-xs text-gray-400 font-medium">{o.fecha_cierre ? new Date(o.fecha_cierre).toLocaleDateString() : ''}</span>}
+                  <div className="flex justify-end items-center gap-2">
+                    {o.estado === 'Abierta' && (
+                      <>
+                        <button onClick={() => openCerrar(o)} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center shadow-sm">
+                          <CheckCircle className="w-4 h-4 mr-1" /> Cerrar
+                        </button>
+                        <button onClick={() => handleCancelar(o)} className="bg-white border border-red-200 text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center">
+                          <Ban className="w-4 h-4 mr-1" /> Cancelar
+                        </button>
+                      </>
+                    )}
+                    {o.estado === 'Cerrada' && <span className="text-xs text-gray-400 font-medium mr-1">{o.fecha_cierre ? new Date(o.fecha_cierre).toLocaleDateString() : ''}</span>}
+                    <button onClick={() => handlePrint(o.id)} title="Imprimir parte de producción" className="text-gray-500 hover:text-orange-600 p-1.5 rounded-lg hover:bg-orange-50">
+                      <Printer className="w-5 h-5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

@@ -407,8 +407,133 @@ async def lifespan(app: FastAPI):
     else:
         # Forzar actualización de la plantilla si ya existe pero está rota
         p_remito_exist.codigo_html = html_remito
-    
+
     db.commit()
+
+    # 3. Orden de Producción (Parte de Trabajo) — SOLO crear si no existe (respeta ediciones del admin)
+    p_op_exist = db.query(models.plantilla.PlantillaDocumento).filter(models.plantilla.PlantillaDocumento.tipo_documento == "ORDEN_PRODUCCION").first()
+    if not p_op_exist:
+        html_op = """
+    <html>
+    <head>
+      <style>
+         body { font-family: 'Helvetica', 'Arial', sans-serif; color: #222; font-size: 12px; }
+         .top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #d35400; padding-bottom: 10px; }
+         .empresa { font-size: 11px; color: #555; }
+         .empresa strong { font-size: 13px; color: #222; }
+         .doc-title { text-align: right; }
+         .doc-title h1 { margin: 0; color: #d35400; font-size: 22px; letter-spacing: 1px; }
+         .doc-meta { font-size: 12px; margin-top: 4px; }
+         .estado { display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+         .e-abierta { background: #fdebd0; color: #b9770e; }
+         .e-cerrada { background: #d5f5e3; color: #1e8449; }
+         .e-cancelada { background: #fadbd8; color: #c0392b; }
+         h2.sec { margin: 22px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; padding: 6px 8px; color: #fff; }
+         h2.insumos { background: #922b21; }
+         h2.productos { background: #1e8449; }
+         table.grid { width: 100%; border-collapse: collapse; font-size: 12px; }
+         table.grid th { background: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ccc; }
+         table.grid td { padding: 8px; border: 1px solid #ddd; }
+         table.grid td.cant { text-align: center; font-weight: bold; font-size: 14px; }
+         .obs { margin-top: 20px; padding: 10px; border: 1px solid #ddd; background: #fafafa; font-size: 12px; }
+         .merma { margin-top: 14px; text-align: right; font-size: 13px; font-weight: bold; color: #922b21; }
+         .firmas { margin-top: 55px; display: flex; justify-content: space-between; }
+         .firma { width: 40%; border-top: 1px solid #333; padding-top: 5px; text-align: center; font-size: 11px; color: #555; }
+         .pie { margin-top: 30px; font-size: 10px; color: #999; text-align: center; }
+      </style>
+    </head>
+    <body>
+       {% set cerrada = orden.estado == 'Cerrada' %}
+       <div class="top">
+          <div class="empresa">
+             {% if empresa.logo_base64 %}<img src="{{ empresa.logo_base64 }}" style="max-height:55px; margin-bottom:5px;"><br>{% endif %}
+             <strong>{{ empresa.razon_social }}</strong><br>
+             {{ empresa.domicilio_comercial or '' }}{% if empresa.localidad %}, {{ empresa.localidad }}{% endif %}<br>
+             Tel: {{ empresa.telefono or '-' }}
+          </div>
+          <div class="doc-title">
+             <h1>PARTE DE PRODUCCIÓN</h1>
+             <div class="doc-meta">
+                Nº OP-{{ "%05d" | format(orden.numero) }}<br>
+                Fecha: {{ orden.fecha.strftime('%d/%m/%Y') if orden.fecha else '' }}
+                {% if cerrada and orden.fecha_cierre %}<br>Cierre: {{ orden.fecha_cierre.strftime('%d/%m/%Y %H:%M') }}{% endif %}
+             </div>
+             <span class="estado {% if orden.estado == 'Cerrada' %}e-cerrada{% elif orden.estado == 'Cancelada' %}e-cancelada{% else %}e-abierta{% endif %}">{{ orden.estado }}</span>
+          </div>
+       </div>
+
+       <h2 class="sec insumos">Materia prima a procesar</h2>
+       <table class="grid">
+          <thead>
+             <tr>
+                <th>Producto</th>
+                <th style="width:90px; text-align:center;">Cant. {% if cerrada %}real{% else %}plan.{% endif %}</th>
+                <th style="width:70px;">Unidad</th>
+                <th style="width:150px;">Lote origen</th>
+                {% if not cerrada %}<th style="width:110px; text-align:center;">Cant. real</th>{% endif %}
+             </tr>
+          </thead>
+          <tbody>
+             {% for i in insumos %}
+             <tr>
+                <td>{{ i.producto.nombre }}</td>
+                <td class="cant">{{ "%.2f"|format(i.cantidad_real if cerrada else i.cantidad_planificada) }}</td>
+                <td>{{ i.producto.unidad }}</td>
+                <td>{{ i.nro_lote or '________________' }}</td>
+                {% if not cerrada %}<td></td>{% endif %}
+             </tr>
+             {% endfor %}
+          </tbody>
+       </table>
+
+       <h2 class="sec productos">Subproductos a obtener</h2>
+       <table class="grid">
+          <thead>
+             <tr>
+                <th>Producto</th>
+                <th style="width:90px; text-align:center;">Cant. {% if cerrada %}real{% else %}plan.{% endif %}</th>
+                <th style="width:70px;">Unidad</th>
+                <th style="width:130px;">Lote generado</th>
+                <th style="width:100px;">Vencim.</th>
+                {% if not cerrada %}<th style="width:110px; text-align:center;">Cant. real</th>{% endif %}
+             </tr>
+          </thead>
+          <tbody>
+             {% for p in productos %}
+             <tr>
+                <td>{{ p.producto.nombre }}</td>
+                <td class="cant">{{ "%.2f"|format(p.cantidad_real if cerrada else p.cantidad_planificada) }}</td>
+                <td>{{ p.producto.unidad }}</td>
+                <td>{{ p.nro_lote_generado or '____________' }}</td>
+                <td>{{ p.fecha_vencimiento.strftime('%d/%m/%Y') if p.fecha_vencimiento else '__/__/____' }}</td>
+                {% if not cerrada %}<td></td>{% endif %}
+             </tr>
+             {% endfor %}
+          </tbody>
+       </table>
+
+       {% if cerrada %}
+       {% set tot_ins = insumos | sum(attribute='cantidad_real') %}
+       {% set tot_prod = productos | sum(attribute='cantidad_real') %}
+       <div class="merma">Merma: {{ "%.2f"|format(tot_ins - tot_prod) }} {% if tot_ins > 0 %}({{ "%.1f"|format((tot_ins - tot_prod) / tot_ins * 100) }}%){% endif %}</div>
+       {% endif %}
+
+       {% if orden.observaciones %}
+       <div class="obs"><strong>Observaciones:</strong> {{ orden.observaciones }}</div>
+       {% endif %}
+
+       <div class="firmas">
+          <div class="firma">Operario</div>
+          <div class="firma">Responsable de producción</div>
+       </div>
+
+       <div class="pie">Parte de producción · Generado por Factu ERP Avanzado</div>
+    </body>
+    </html>
+    """
+        p_op = models.plantilla.PlantillaDocumento(nombre="Parte de Producción Estándar", tipo_documento="ORDEN_PRODUCCION", codigo_html=html_op, activa=True)
+        db.add(p_op)
+        db.commit()
 
     # Inyección Dinámica Menú Plantillas si no existe
     m_plantillas_exist = db.query(Menu).filter(Menu.ruta == "/plantillas").first()
