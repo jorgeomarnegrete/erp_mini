@@ -25,7 +25,9 @@ import models.remito
 import models.remito_compra
 import models.transporte
 import models.carga_preparacion
+import models.orden_produccion
 from routers import pedidos, remitos, remitos_compra, transporte, carga_preparacion, logistica_control, qz, producto_etiqueta
+from routers import orden_produccion
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -643,7 +645,20 @@ async def lifespan(app: FastAPI):
             m_zonas = Menu(nombre="Zonas de Entrega", ruta="/archivos/zonas", icono="MapPin", parent_id=parent.id, orden=8)
             db.add(m_zonas)
             db.commit()
-    
+
+    # Inyectar sección Producción + Órdenes de Producción si no existe
+    m_prod_exist = db.query(Menu).filter(Menu.nombre == "Producción").first()
+    if not m_prod_exist:
+        m_prod = Menu(nombre="Producción", icono="Factory", orden=5)
+        db.add(m_prod)
+        db.commit()
+        m_prod_exist = m_prod
+    m_op_exist = db.query(Menu).filter(Menu.ruta == "/produccion/ordenes").first()
+    if not m_op_exist:
+        m_op = Menu(nombre="Órdenes de Producción", ruta="/produccion/ordenes", icono="Factory", parent_id=m_prod_exist.id, orden=1)
+        db.add(m_op)
+        db.commit()
+
     # Inyectar usuario inicial
     admin_email = "jnegrete@gmail.com"
     existing_user = db.query(User).filter(User.email == admin_email).first()
@@ -700,3 +715,4 @@ app.include_router(transporte.router)
 app.include_router(carga_preparacion.router)
 app.include_router(logistica_control.router)
 app.include_router(producto_etiqueta.router)
+app.include_router(orden_produccion.router)

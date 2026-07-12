@@ -27,6 +27,7 @@ import Transportes from './pages/Transportes';
 import AsignacionCargas from './pages/AsignacionCargas';
 import PreparacionCarga from './pages/PreparacionCarga';
 import ControlDespacho from './pages/ControlDespacho';
+import OrdenesProduccion from './pages/OrdenesProduccion';
 import Layout from './components/Layout';
 
 export const AuthContext = createContext();
@@ -120,6 +121,9 @@ function App() {
             <Route path="stock/ajustes" element={<AjustesStock />} />
             <Route path="stock/ingreso-scanner" element={<IngresoStock />} />
             
+            {/* Módulo Producción */}
+            <Route path="produccion/ordenes" element={<OrdenesProduccion />} />
+
             {/* Módulo Logística */}
             <Route path="transportes" element={<Transportes />} />
             <Route path="logistica/asignacion" element={<AsignacionCargas />} />

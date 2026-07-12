@@ -59,11 +59,16 @@ async def get_stock_disponible(record_id: int, current_user: User = Depends(get_
         raise HTTPException(status_code=404, detail="Producto Inexistente.")
         
     from crud import pedido as crud_pedido
-    comprometido = crud_pedido.get_stock_comprometido(db, producto_id=record_id)
-    
+    from crud import orden_produccion as crud_op
+    comprometido_pedidos = crud_pedido.get_stock_comprometido(db, producto_id=record_id)
+    comprometido_op = crud_op.get_stock_comprometido_op(db, producto_id=record_id)
+    comprometido = comprometido_pedidos + comprometido_op
+
     return {
         "producto_id": record_id,
         "stock_actual": db_record.stock_actual,
         "comprometido": comprometido,
+        "comprometido_pedidos": comprometido_pedidos,
+        "comprometido_op": comprometido_op,
         "disponible": db_record.stock_actual - comprometido
     }
