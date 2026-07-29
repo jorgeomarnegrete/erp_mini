@@ -26,6 +26,9 @@ export default function Productos() {
   
   const [formError, setFormError] = useState('');
 
+  // Lotes del producto en edición (solo lectura — se generan por remito/ingreso/OP)
+  const [editLotes, setEditLotes] = useState([]);
+
   // Etiqueta Modal State
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
   const [labelTab, setLabelTab] = useState('datos');
@@ -76,6 +79,7 @@ export default function Productos() {
   const openCreateModal = () => {
     setModalMode('create');
     setFormData(getEmptyForm());
+    setEditLotes([]);
     setFormError('');
     setIsModalOpen(true);
   };
@@ -192,6 +196,7 @@ export default function Productos() {
          precio_personalizado: p.precio_personalizado
       }))
     });
+    setEditLotes(prod.lotes || []);
     setFormError('');
     setIsModalOpen(true);
   };
@@ -222,6 +227,13 @@ export default function Productos() {
 
   // Traer IVA de la DB a tiempo real
   const currentIvaValue = tasasIva.find(t => t.id === parseInt(formData.tasa_iva_id))?.valor || 0;
+
+  // Unidades de medida: las que ya existen en la base + comunes (para el datalist)
+  const unidadesComunes = ['Unidades', 'Kg', 'KGR', 'Gr', 'Lts', 'Ml', 'Mts', 'Cajas', 'FCO', 'BALDE'];
+  const unidadesDisponibles = [...new Set([
+    ...productos.map(p => p.unidad).filter(Boolean),
+    ...unidadesComunes,
+  ])].sort((a, b) => a.localeCompare(b));
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -466,17 +478,64 @@ export default function Productos() {
                         </div>
                         <div className="w-full">
                            <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">U.M. (Medida)</label>
-                           <select value={formData.unidad} onChange={e => setFormData({...formData, unidad: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 font-bold text-gray-800 text-center outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 cursor-pointer">
-                              <option value="Unidades">Unidades (U)</option>
-                              <option value="Kg">Kilogramos (Kg)</option>
-                              <option value="Gr">Gramos (Gr)</option>
-                              <option value="Lts">Litros (Lts)</option>
-                              <option value="Ml">Mililitros (Ml)</option>
-                              <option value="Mts">Metros (Mts)</option>
-                              <option value="Cajas">Cajas / Pack</option>
-                           </select>
+                           <input
+                              type="text"
+                              list="unidades-list"
+                              value={formData.unidad}
+                              onChange={e => setFormData({...formData, unidad: e.target.value})}
+                              className="w-full px-4 py-2.5 rounded-xl border border-gray-300 font-bold text-gray-800 text-center outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50"
+                              placeholder="Ej. KG, FCO, BALDE"
+                           />
+                           <datalist id="unidades-list">
+                              {unidadesDisponibles.map(u => <option key={u} value={u} />)}
+                           </datalist>
                         </div>
                      </div>
+
+                     {/* Stock por lote (solo lectura) */}
+                     {modalMode === 'edit' && (
+                        <div className="pt-2">
+                           <div className="flex items-center justify-between mb-2">
+                              <h4 className="text-sm font-black text-gray-700 uppercase tracking-wider flex items-center">
+                                 <Tags className="w-4 h-4 mr-2 text-gray-400" /> Stock por lote
+                              </h4>
+                              <span className="text-[10px] font-bold text-gray-400 italic">Se gestiona por remito / ingreso / producción</span>
+                           </div>
+                           <div className="border border-gray-200 rounded-xl overflow-hidden">
+                              <table className="w-full text-left text-sm">
+                                 <thead className="bg-gray-100/70 text-gray-500 text-xs uppercase font-black">
+                                    <tr>
+                                       <th className="px-3 py-2">Lote</th>
+                                       <th className="px-3 py-2">Vencimiento</th>
+                                       <th className="px-3 py-2 text-right">Cantidad</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-gray-100">
+                                    {editLotes.map(l => (
+                                       <tr key={l.id}>
+                                          <td className="px-3 py-2 font-mono font-bold text-gray-700">{l.nro_lote || '—'}</td>
+                                          <td className="px-3 py-2 text-gray-600">{l.fecha_vencimiento ? new Date(l.fecha_vencimiento).toLocaleDateString() : '—'}</td>
+                                          <td className="px-3 py-2 text-right font-black text-gray-800">{Number(l.cantidad_actual).toFixed(2)} {formData.unidad}</td>
+                                       </tr>
+                                    ))}
+                                    {editLotes.length === 0 && (
+                                       <tr><td colSpan="3" className="px-3 py-4 text-center text-gray-400 font-semibold italic text-xs">Sin lotes registrados para este producto.</td></tr>
+                                    )}
+                                 </tbody>
+                                 {editLotes.length > 0 && (
+                                    <tfoot className="bg-gray-50 border-t border-gray-200">
+                                       <tr>
+                                          <td colSpan="2" className="px-3 py-2 text-right text-xs font-black text-gray-500 uppercase">Total en lotes</td>
+                                          <td className="px-3 py-2 text-right font-black text-indigo-700">
+                                             {editLotes.reduce((s, l) => s + Number(l.cantidad_actual || 0), 0).toFixed(2)} {formData.unidad}
+                                          </td>
+                                       </tr>
+                                    </tfoot>
+                                 )}
+                              </table>
+                           </div>
+                        </div>
+                     )}
                   </div>
 
                   {/* COLUMNA 2: Configuración de Precios */}

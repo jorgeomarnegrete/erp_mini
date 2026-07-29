@@ -206,6 +206,19 @@ export default function Remitos() {
       return;
     }
 
+    // Si descuenta stock, el lote es obligatorio para productos que manejan lotes.
+    if (head.descuenta_stock) {
+      const sinLote = cleanDetalles.find(d => {
+        const prod = productos.find(p => p.id === parseInt(d.producto_id));
+        return prod?.lotes?.length > 0 && !d.nro_lote;
+      });
+      if (sinLote) {
+        const prod = productos.find(p => p.id === parseInt(sinLote.producto_id));
+        setErrorMsg(`Debes seleccionar un lote para "${prod?.nombre || 'un producto'}".`);
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
       const totalDoc = calculateTotal();

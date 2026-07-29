@@ -55,17 +55,28 @@ def create_remito(db: Session, remito_in: RemitoCreate, user_id: int):
         # Lógica de Stock Directo: Actualizar stock_actual si corresponde
         if remito_in.descuenta_stock:
             producto = db.query(Producto).filter(Producto.id == det.producto_id).first()
-            if producto:
-                producto.stock_actual -= det.cantidad
-                
-            # Lógica de Lotes: Restar del lote específico si existe
-            if det.nro_lote:
+            if not producto:
+                raise ValueError(f"Producto {det.producto_id} inexistente.")
+
+            # ¿El producto maneja lotes? Si tiene al menos un lote registrado, el lote es OBLIGATORIO.
+            tiene_lotes = db.query(ProductoLoteStock).filter(
+                ProductoLoteStock.producto_id == det.producto_id
+            ).count() > 0
+
+            if tiene_lotes:
+                if not det.nro_lote:
+                    raise ValueError(f"Debe seleccionar un lote para el producto '{producto.nombre}'.")
                 lote_stock = db.query(ProductoLoteStock).filter(
                     ProductoLoteStock.producto_id == det.producto_id,
                     ProductoLoteStock.nro_lote == det.nro_lote
                 ).first()
-                if lote_stock:
-                    lote_stock.cantidad_actual -= det.cantidad
+                if not lote_stock:
+                    raise ValueError(f"El lote '{det.nro_lote}' no existe para el producto '{producto.nombre}'.")
+                # Se permite saldo negativo por ahora (no se valida stock suficiente).
+                # El lote y el stock global bajan JUNTOS para que nunca diverjan.
+                lote_stock.cantidad_actual -= det.cantidad
+
+            producto.stock_actual -= det.cantidad
 
     # 4. Actualizar estado del Pedido si corresponde
     if remito_in.pedido_id:
