@@ -14,7 +14,7 @@ async def read_all_vendedores(current_user: User = Depends(get_current_user), db
     return crud_vend.get_all(db)
 
 @router.post("", response_model=VendedorResponse, status_code=status.HTTP_201_CREATED)
-async def create_vendedor(vend_in: VendedorCreate, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def create_vendedor(vend_in: VendedorCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if vend_in.user_id:
         db_user_link = crud_vend.get_by_user_id(db, user_id=vend_in.user_id)
         if db_user_link:
@@ -23,7 +23,7 @@ async def create_vendedor(vend_in: VendedorCreate, current_user: User = Depends(
     return crud_vend.create(db=db, record_in=vend_in)
 
 @router.put("/{record_id}", response_model=VendedorResponse)
-async def update_vendedor(record_id: int, vend_in: VendedorUpdate, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def update_vendedor(record_id: int, vend_in: VendedorUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_record = crud_vend.get_by_id(db, record_id=record_id)
     if not db_record:
         raise HTTPException(status_code=404, detail="Vendedor no encontrado.")
@@ -36,7 +36,7 @@ async def update_vendedor(record_id: int, vend_in: VendedorUpdate, current_user:
     return crud_vend.update(db=db, db_record=db_record, record_update=vend_in)
 
 @router.delete("/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_vendedor(record_id: int, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def delete_vendedor(record_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_record = crud_vend.get_by_id(db, record_id=record_id)
     if not db_record:
         raise HTTPException(status_code=404, detail="Vendedor Inexistente.")

@@ -18,6 +18,6 @@ async def read_empresa(current_user: User = Depends(get_current_user), db: Sessi
     return empresa
 
 @router.put("", response_model=EmpresaResponse)
-async def modify_empresa(emp_in: EmpresaUpdate, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def modify_empresa(emp_in: EmpresaUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Actualización del Perfil Empresa - Solo para Administradores Jefes"""
     return update_empresa(db=db, record_update=emp_in)

@@ -15,14 +15,14 @@ async def read_all_tipos(current_user: User = Depends(get_current_user), db: Ses
     return crud_tr.get_all(db)
 
 @router.post("", response_model=TipoRespResponse, status_code=status.HTTP_201_CREATED)
-async def create_tipo(tipo_in: TipoRespCreate, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def create_tipo(tipo_in: TipoRespCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_record = crud_tr.get_by_codigo(db, codigo_arca=tipo_in.codigo_arca)
     if db_record:
         raise HTTPException(status_code=400, detail="El código de ARCA ya está registrado.")
     return crud_tr.create(db=db, record_in=tipo_in)
 
 @router.put("/{record_id}", response_model=TipoRespResponse)
-async def update_tipo(record_id: int, tipo_in: TipoRespUpdate, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def update_tipo(record_id: int, tipo_in: TipoRespUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_record = crud_tr.get_by_id(db, record_id=record_id)
     if not db_record:
         raise HTTPException(status_code=404, detail="Tipo de Responsable no encontrado")
@@ -35,7 +35,7 @@ async def update_tipo(record_id: int, tipo_in: TipoRespUpdate, current_user: Use
     return crud_tr.update(db=db, db_record=db_record, record_update=tipo_in)
 
 @router.delete("/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_tipo(record_id: int, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def delete_tipo(record_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_record = crud_tr.get_by_id(db, record_id=record_id)
     if not db_record:
         raise HTTPException(status_code=404, detail="Registro no encontrado")

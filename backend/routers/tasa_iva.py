@@ -16,7 +16,7 @@ async def read_all_iva(current_user: User = Depends(get_current_user), db: Sessi
     return crud_iva.get_all(db)
 
 @router.post("", response_model=TasaIvaResponse, status_code=status.HTTP_201_CREATED)
-async def create_iva(iva_in: TasaIvaCreate, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def create_iva(iva_in: TasaIvaCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Añadir nuevo registro AFIP IVA"""
     if crud_iva.get_by_codigo(db, codigo_arca=iva_in.codigo_arca):
          raise HTTPException(status_code=400, detail="Ya existe una tasa con ese Código de ARCA.")
@@ -26,7 +26,7 @@ async def create_iva(iva_in: TasaIvaCreate, current_user: User = Depends(get_cur
     return crud_iva.create(db=db, record_in=iva_in)
 
 @router.put("/{record_id}", response_model=TasaIvaResponse)
-async def update_iva(record_id: int, iva_in: TasaIvaUpdate, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def update_iva(record_id: int, iva_in: TasaIvaUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Corrección de Tasas"""
     db_record = crud_iva.get_by_id(db, record_id=record_id)
     if not db_record:
@@ -39,7 +39,7 @@ async def update_iva(record_id: int, iva_in: TasaIvaUpdate, current_user: User =
     return crud_iva.update(db=db, db_record=db_record, record_update=iva_in)
 
 @router.delete("/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_iva(record_id: int, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def delete_iva(record_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_record = crud_iva.get_by_id(db, record_id=record_id)
     if not db_record:
         raise HTTPException(status_code=404, detail="Impuesto no encontrado.")

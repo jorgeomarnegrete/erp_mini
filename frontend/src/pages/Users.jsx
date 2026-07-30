@@ -195,9 +195,10 @@ export default function Users() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-6 my-8 grid grid-cols-1 md:grid-cols-2 gap-8 transform transition-all">
-            
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all">
+            <div className="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+
             {/* Izquierda: Datos del Usuario */}
             <div className="space-y-4">
               <div className="flex justify-between items-center mb-5 md:hidden">
@@ -268,7 +269,7 @@ export default function Users() {
             </div>
 
             {/* Derecha: Arbol de Permisos */}
-            <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 flex flex-col h-full">
+            <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 flex flex-col">
               <div className="flex justify-between items-center mb-4 border-b pb-2">
                  <h3 className="text-lg font-bold text-indigo-900 flex items-center">
                    <LucideIcons.ShieldAlert className="w-5 h-5 mr-2" /> Menús Autorizados
@@ -281,7 +282,7 @@ export default function Users() {
               </div>
               <p className="text-xs text-gray-500 mb-4">Selecciona los menús a los que este usuario tendrá acceso en el frontend.</p>
               
-              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="pr-2 custom-scrollbar">
                 {menusTree.length > 0 ? renderMenuTree(menusTree) : (
                   <div className="text-sm text-gray-400 italic text-center py-10">No hay menús registrados en el sistema</div>
                 )}
@@ -289,9 +290,9 @@ export default function Users() {
             </div>
 
           </div>
-          
-          {/* Botones Flotantes Abajo */}
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur border-t md:relative md:bg-transparent md:border-t-0 md:p-0 flex justify-end space-x-3 w-full max-w-4xl mx-auto">
+
+          {/* Footer Botones */}
+          <div className="px-6 py-4 border-t bg-gray-50 flex justify-end space-x-3">
              <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-700 bg-white border hover:bg-gray-50 rounded-xl font-bold transition-all shadow-sm">
                 Cerrar
              </button>
@@ -300,6 +301,7 @@ export default function Users() {
              </button>
           </div>
         </div>
+      </div>
       )}
     </div>
   );
