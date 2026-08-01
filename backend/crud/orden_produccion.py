@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from fastapi import HTTPException
 import datetime
+import re
 
 from models.orden_produccion import OrdenProduccion, OpInsumo, OpProducto
 from models.producto import Producto, ProductoLoteStock
@@ -11,6 +12,24 @@ from schemas.orden_produccion import OrdenProduccionCreate, OrdenProduccionCierr
 def _proximo_numero(db: Session) -> int:
     ultimo = db.query(func.max(OrdenProduccion.numero)).scalar()
     return (ultimo or 0) + 1
+
+
+def proximo_lote(db: Session, fecha_vencimiento: datetime.date) -> str:
+    """
+    Sugiere el próximo nro_lote para una fecha de vencimiento dada, con formato
+    YYYYMMDD-NN. El secuencial es compartido entre todos los productos que
+    venzan ese mismo día (no se calcula por producto).
+    """
+    fecha_str = fecha_vencimiento.strftime("%Y%m%d")
+    candidatos = db.query(ProductoLoteStock.nro_lote).filter(
+        ProductoLoteStock.nro_lote.like(f"{fecha_str}-%")
+    ).all()
+    max_seq = 0
+    for (nro_lote,) in candidatos:
+        m = re.fullmatch(rf"{fecha_str}-(\d+)", nro_lote or "")
+        if m:
+            max_seq = max(max_seq, int(m.group(1)))
+    return f"{fecha_str}-{max_seq + 1:02d}"
 
 
 def create_orden(db: Session, orden_in: OrdenProduccionCreate, user_id: int):

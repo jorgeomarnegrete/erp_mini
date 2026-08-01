@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import date
 
 from database import get_db
 from models.user import User
@@ -22,6 +23,12 @@ router = APIRouter(prefix="/api/ordenes-produccion", tags=["ordenes_produccion"]
 async def read_ordenes(skip: int = 0, limit: int = 100, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Historial de órdenes de producción."""
     return crud_op.get_ordenes(db, skip=skip, limit=limit)
+
+
+@router.get("/proximo-lote")
+async def proximo_lote(fecha_vencimiento: date, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Sugiere el próximo nro_lote (YYYYMMDD-NN) para una fecha de vencimiento."""
+    return {"nro_lote": crud_op.proximo_lote(db, fecha_vencimiento)}
 
 
 @router.get("/{orden_id}", response_model=OrdenProduccionResponse)

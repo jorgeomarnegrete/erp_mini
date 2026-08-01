@@ -35,6 +35,21 @@ export default function OrdenesProduccion() {
 
   const prodById = (id) => productos.find((p) => p.id === id);
 
+  // Sugiere nro_lote (YYYYMMDD-NN) para una fecha de vencimiento, evitando
+  // repetir secuencial con otras filas del mismo formulario que ya lo usen.
+  const sugerirLote = async (fechaStr, filasActuales) => {
+    try {
+      const { data } = await api.get('/api/ordenes-produccion/proximo-lote', { params: { fecha_vencimiento: fechaStr } });
+      const prefijo = fechaStr.replaceAll('-', '');
+      const usados = filasActuales.filter((x) => x.nro_lote_generado?.startsWith(prefijo + '-')).length;
+      const base = parseInt(data.nro_lote.split('-')[1], 10);
+      return `${prefijo}-${String(base + usados).padStart(2, '0')}`;
+    } catch (e) {
+      console.error('Error al sugerir lote:', e);
+      return '';
+    }
+  };
+
   const fetchData = async () => {
     try {
       const [resOp, resProd] = await Promise.all([
@@ -372,8 +387,8 @@ export default function OrdenesProduccion() {
                     <tr>
                       <th className="p-3 border-b">Producto</th>
                       <th className="p-3 border-b text-center w-24">Cant.</th>
-                      <th className="p-3 border-b w-40">Lote generado (opc.)</th>
                       <th className="p-3 border-b w-40">Vencimiento (opc.)</th>
+                      <th className="p-3 border-b w-40">Lote generado (opc.)</th>
                       <th className="p-3 border-b text-center w-12"></th>
                     </tr>
                   </thead>
@@ -394,12 +409,19 @@ export default function OrdenesProduccion() {
                             onChange={(e) => updateSubproducto(d.temp_id, 'cantidad', parseFloat(e.target.value) || 0)} />
                         </td>
                         <td className="p-2">
-                          <input type="text" value={d.nro_lote_generado} placeholder="Ej: OP-0001" className="w-full p-1.5 rounded border border-gray-300 text-sm"
-                            onChange={(e) => updateSubproducto(d.temp_id, 'nro_lote_generado', e.target.value)} />
+                          <input type="date" value={d.fecha_vencimiento} className="w-full p-1.5 rounded border border-gray-300 text-sm"
+                            onChange={async (e) => {
+                              const fecha = e.target.value;
+                              updateSubproducto(d.temp_id, 'fecha_vencimiento', fecha);
+                              if (fecha) {
+                                const lote = await sugerirLote(fecha, subproductos);
+                                if (lote) updateSubproducto(d.temp_id, 'nro_lote_generado', lote);
+                              }
+                            }} />
                         </td>
                         <td className="p-2">
-                          <input type="date" value={d.fecha_vencimiento} className="w-full p-1.5 rounded border border-gray-300 text-sm"
-                            onChange={(e) => updateSubproducto(d.temp_id, 'fecha_vencimiento', e.target.value)} />
+                          <input type="text" value={d.nro_lote_generado} placeholder="Ej: OP-0001" className="w-full p-1.5 rounded border border-gray-300 text-sm"
+                            onChange={(e) => updateSubproducto(d.temp_id, 'nro_lote_generado', e.target.value)} />
                         </td>
                         <td className="p-2 text-center">
                           <button type="button" onClick={() => removeSubproducto(d.temp_id)} className="text-gray-400 hover:text-red-500 p-1"><Trash2 className="w-4 h-4" /></button>
@@ -472,7 +494,7 @@ export default function OrdenesProduccion() {
               <div className="border border-gray-200 rounded-xl overflow-hidden">
                 <table className="w-full text-left">
                   <thead className="bg-slate-100/50 text-slate-800 text-xs font-black uppercase">
-                    <tr><th className="p-3">Producto</th><th className="p-3 text-center w-28">Cant. real</th><th className="p-3 w-40">Lote generado</th><th className="p-3 w-40">Vencimiento</th></tr>
+                    <tr><th className="p-3">Producto</th><th className="p-3 text-center w-28">Cant. real</th><th className="p-3 w-40">Vencimiento</th><th className="p-3 w-40">Lote generado</th></tr>
                   </thead>
                   <tbody>
                     {cProductos.map((p, idx) => (
@@ -483,12 +505,19 @@ export default function OrdenesProduccion() {
                             onChange={(e) => setCProductos((prev) => prev.map((x, j) => j === idx ? { ...x, cantidad_real: parseFloat(e.target.value) || 0 } : x))} />
                         </td>
                         <td className="p-2">
-                          <input type="text" value={p.nro_lote_generado} placeholder="Ej: OP-0001" className="w-full p-1.5 rounded border border-gray-300 text-sm"
-                            onChange={(e) => setCProductos((prev) => prev.map((x, j) => j === idx ? { ...x, nro_lote_generado: e.target.value } : x))} />
+                          <input type="date" value={p.fecha_vencimiento} className="w-full p-1.5 rounded border border-gray-300 text-sm"
+                            onChange={async (e) => {
+                              const fecha = e.target.value;
+                              setCProductos((prev) => prev.map((x, j) => j === idx ? { ...x, fecha_vencimiento: fecha } : x));
+                              if (fecha) {
+                                const lote = await sugerirLote(fecha, cProductos);
+                                if (lote) setCProductos((prev) => prev.map((x, j) => j === idx ? { ...x, nro_lote_generado: lote } : x));
+                              }
+                            }} />
                         </td>
                         <td className="p-2">
-                          <input type="date" value={p.fecha_vencimiento} className="w-full p-1.5 rounded border border-gray-300 text-sm"
-                            onChange={(e) => setCProductos((prev) => prev.map((x, j) => j === idx ? { ...x, fecha_vencimiento: e.target.value } : x))} />
+                          <input type="text" value={p.nro_lote_generado} placeholder="Ej: OP-0001" className="w-full p-1.5 rounded border border-gray-300 text-sm"
+                            onChange={(e) => setCProductos((prev) => prev.map((x, j) => j === idx ? { ...x, nro_lote_generado: e.target.value } : x))} />
                         </td>
                       </tr>
                     ))}
