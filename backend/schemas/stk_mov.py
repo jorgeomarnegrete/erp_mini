@@ -5,6 +5,7 @@ from datetime import datetime
 class StkMovItem(BaseModel):
     id_producto: int
     cantidad: float
+    nro_lote: Optional[str] = None
 
 class StkMovCreate(BaseModel):
     tipo: int
@@ -19,6 +20,7 @@ class StkMovOut(BaseModel):
     motivo: str
     cantidad: float
     tipo: int
+    nro_lote: Optional[str] = None
 
     class Config:
         orm_mode = True

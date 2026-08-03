@@ -5,7 +5,7 @@ from database import Base
 
 class StkMov(Base):
     __tablename__ = "stk_mov"
-    
+
     id_mov = Column(Integer, primary_key=True, index=True)
     fecha_hora = Column(DateTime, default=datetime.now)
     id_usuario = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -13,6 +13,7 @@ class StkMov(Base):
     motivo = Column(Text, nullable=False)
     cantidad = Column(Float, nullable=False, default=0.0)
     tipo = Column(Integer, nullable=False)  # 1 = Entrada, 2 = Salida
-    
+    nro_lote = Column(String, nullable=True)
+
     usuario = relationship("User")
     producto = relationship("Producto")

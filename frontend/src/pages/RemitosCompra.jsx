@@ -336,9 +336,6 @@ export default function RemitosCompra() {
               {/* Renglones */}
               <div className="mb-2 flex justify-between items-end">
                  <h4 className="font-black text-gray-700 text-sm uppercase tracking-wide">Artículos Recibidos</h4>
-                 <button type="button" onClick={addDetalle} className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded flex items-center shadow-sm hover:bg-slate-700">
-                   <Plus className="w-4 h-4 mr-1" /> Añadir Renglón
-                 </button>
               </div>
 
               <div className="border border-gray-200 rounded-xl overflow-hidden mb-6 shadow-inner">
@@ -438,14 +435,19 @@ export default function RemitosCompra() {
               </div>
             </div>
 
-            <div className="px-6 py-4 bg-gray-50 border-t flex justify-end items-center gap-3 rounded-b-xl">
-               <button type="button" disabled={isSaving} onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-700 bg-white border shadow-sm rounded-xl font-bold hover:bg-gray-100">
-                 Cancelar
+            <div className="px-6 py-4 bg-gray-50 border-t flex justify-between items-center gap-3 rounded-b-xl">
+               <button type="button" onClick={addDetalle} className="text-xs bg-slate-800 text-white px-3 py-2.5 rounded-xl flex items-center shadow-sm hover:bg-slate-700 font-bold">
+                 <Plus className="w-4 h-4 mr-1" /> Añadir Renglón
                </button>
-               <button type="submit" disabled={isSaving} onClick={handleSave} className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-black shadow-lg hover:bg-blue-700 flex items-center">
-                 {isSaving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div> : <Save className="w-5 h-5 mr-2" />}
-                 Guardar Remito
-               </button>
+               <div className="flex items-center gap-3">
+                 <button type="button" disabled={isSaving} onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-700 bg-white border shadow-sm rounded-xl font-bold hover:bg-gray-100">
+                   Cancelar
+                 </button>
+                 <button type="submit" disabled={isSaving} onClick={handleSave} className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-black shadow-lg hover:bg-blue-700 flex items-center">
+                   {isSaving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div> : <Save className="w-5 h-5 mr-2" />}
+                   Guardar Remito
+                 </button>
+               </div>
             </div>
           </div>
         </div>

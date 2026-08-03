@@ -2,8 +2,11 @@ from sqlalchemy.orm import Session
 from models.producto import Producto, ProductoPrecio
 from schemas.producto import ProductoCreate, ProductoUpdate
 
-def get_all(db: Session, skip: int = 0, limit: int = 500):
-    return db.query(Producto).order_by(Producto.nombre.asc()).offset(skip).limit(limit).all()
+def get_all(db: Session, skip: int = 0, limit: int | None = None):
+    query = db.query(Producto).order_by(Producto.nombre.asc()).offset(skip)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
 
 def get_by_id(db: Session, record_id: int):
     return db.query(Producto).filter(Producto.id == record_id).first()

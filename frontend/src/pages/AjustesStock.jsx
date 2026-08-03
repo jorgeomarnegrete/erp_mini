@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../App';
-import { PackageOpen, Plus, Trash2, Save, Search } from 'lucide-react';
+import { PackageOpen, Plus, Trash2, Save, Search, Database } from 'lucide-react';
 import ProductSearchModal from '../components/ProductSearchModal';
+import BatchSearchModal from '../components/BatchSearchModal';
 
 export default function AjustesStock() {
   const { api } = useAuth();
@@ -13,12 +14,16 @@ export default function AjustesStock() {
 
   const [head, setHead] = useState({ tipo: 1, motivo: '' });
   const [detalles, setDetalles] = useState([
-    { temp_id: Date.now(), producto_id: '', codigo: '', nombre: '', cantidad: 1, unidad: '' }
+    { temp_id: Date.now(), producto_id: '', codigo: '', nombre: '', cantidad: 1, unidad: '', nro_lote: '' }
   ]);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeRowId, setActiveRowId] = useState(null);
+
+  // Modal de lotes: elegir un lote existente (nunca se crea uno nuevo desde acá)
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [selectedProductForBatch, setSelectedProductForBatch] = useState(null);
 
   // Referencias para manejar el foco dinámico
   const quantityRefs = useRef({});
@@ -37,7 +42,7 @@ export default function AjustesStock() {
   }, [api]);
 
   const addRow = useCallback(() => {
-    setDetalles((prev) => [...prev, { temp_id: Date.now(), producto_id: '', codigo: '', nombre: '', cantidad: 1, unidad: '' }]);
+    setDetalles((prev) => [...prev, { temp_id: Date.now(), producto_id: '', codigo: '', nombre: '', cantidad: 1, unidad: '', nro_lote: '' }]);
   }, []);
 
   const removeRow = (temp_id) => {
@@ -53,8 +58,8 @@ export default function AjustesStock() {
   // Keyboard events logic
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
-      // Si el modal está abierto, ignorar
-      if (isModalOpen) return;
+      // Si algún modal está abierto, ignorar
+      if (isModalOpen || isBatchModalOpen) return;
 
       if (e.key === 'Insert') {
         e.preventDefault();
@@ -79,36 +84,61 @@ export default function AjustesStock() {
 
     document.addEventListener('keydown', handleGlobalKeyDown);
     return () => document.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [addRow, isModalOpen, detalles]);
+  }, [addRow, isModalOpen, isBatchModalOpen, detalles]);
 
   const handleProductSelect = (producto) => {
     if (activeRowId) {
+      const rowId = activeRowId;
       setDetalles((prev) =>
         prev.map((d) => {
-          if (d.temp_id === activeRowId) {
+          if (d.temp_id === rowId) {
             return {
               ...d,
               producto_id: producto.id,
               codigo: producto.codigo_interno,
               nombre: producto.nombre,
               unidad: producto.unidad || '',
+              nro_lote: '',
             };
           }
           return d;
         })
       );
-      // Cerrar modal
+      // Cerrar modal de producto
       setIsModalOpen(false);
-      
+
+      // Si el producto maneja lotes, el lote es obligatorio (tanto en Entrada como en Salida):
+      // hay que elegir a cuál sumar/restar, nunca se crea uno nuevo desde acá.
+      if (producto.lotes && producto.lotes.length > 0) {
+        setSelectedProductForBatch(producto);
+        setActiveRowId(rowId);
+        setIsBatchModalOpen(true);
+        return;
+      }
+
       // Pasar el foco a la cantidad usando setTimeout para dar tiempo al render reactivo
       setTimeout(() => {
-        if (quantityRefs.current[activeRowId]) {
-          quantityRefs.current[activeRowId].focus();
-          quantityRefs.current[activeRowId].select();
+        if (quantityRefs.current[rowId]) {
+          quantityRefs.current[rowId].focus();
+          quantityRefs.current[rowId].select();
         }
       }, 100);
       setActiveRowId(null);
     }
+  };
+
+  const handleBatchSelect = (lote) => {
+    setDetalles((prev) =>
+      prev.map((d) => (d.temp_id === activeRowId ? { ...d, nro_lote: lote.nro_lote } : d))
+    );
+    setIsBatchModalOpen(false);
+    setTimeout(() => {
+      if (quantityRefs.current[activeRowId]) {
+        quantityRefs.current[activeRowId].focus();
+        quantityRefs.current[activeRowId].select();
+      }
+    }, 100);
+    setActiveRowId(null);
   };
 
   const handleSave = async (e) => {
@@ -127,6 +157,17 @@ export default function AjustesStock() {
       return;
     }
 
+    // El lote es obligatorio para productos que manejan lotes, en ambos sentidos.
+    const sinLote = cleanDetalles.find((d) => {
+      const prod = productos.find((p) => p.id === parseInt(d.producto_id));
+      return prod?.lotes?.length > 0 && !d.nro_lote;
+    });
+    if (sinLote) {
+      const prod = productos.find((p) => p.id === parseInt(sinLote.producto_id));
+      setErrorMsg(`Debes seleccionar un lote para "${prod?.nombre || 'un producto'}".`);
+      return;
+    }
+
     setIsSaving(true);
     try {
       const payload = {
@@ -135,15 +176,16 @@ export default function AjustesStock() {
         items: cleanDetalles.map((d) => ({
           id_producto: d.producto_id,
           cantidad: parseFloat(d.cantidad),
+          nro_lote: d.nro_lote || null,
         })),
       };
 
       await api.post('/api/stk-mov', payload);
       setSuccessMsg('Movimiento de stock guardado exitosamente.');
-      
+
       // Reset form
       setHead({ tipo: 1, motivo: '' });
-      setDetalles([{ temp_id: Date.now(), producto_id: '', codigo: '', nombre: '', cantidad: 1, unidad: '' }]);
+      setDetalles([{ temp_id: Date.now(), producto_id: '', codigo: '', nombre: '', cantidad: 1, unidad: '', nro_lote: '' }]);
     } catch (err) {
       setErrorMsg(err.response?.data?.detail || 'Error al guardar el movimiento.');
     }
@@ -219,6 +261,7 @@ export default function AjustesStock() {
                 <th className="p-4 border-b">Código</th>
                 <th className="p-4 border-b w-1/2">Producto / Descripción</th>
                 <th className="p-4 border-b text-center w-48">Cantidad</th>
+                <th className="p-4 border-b text-center w-48">Lote</th>
                 <th className="p-4 border-b text-center w-16"></th>
               </tr>
             </thead>
@@ -264,6 +307,25 @@ export default function AjustesStock() {
                       />
                       {d.unidad && <span className="text-xs font-bold text-gray-500 whitespace-nowrap min-w-[3.5rem] text-left">{d.unidad}</span>}
                     </div>
+                  </td>
+                  <td className="p-3">
+                    {(() => {
+                      const prod = productos.find((p) => p.id === parseInt(d.producto_id));
+                      if (!prod) return <span className="text-xs text-gray-300">—</span>;
+                      if (!(prod.lotes?.length > 0)) return <span className="text-xs text-gray-400 font-medium">Sin lotes</span>;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedProductForBatch(prod); setActiveRowId(d.temp_id); setIsBatchModalOpen(true); }}
+                          className={`w-full flex items-center justify-center gap-1.5 p-2 rounded-lg border font-mono font-bold text-xs transition-colors ${
+                            d.nro_lote ? 'border-teal-300 bg-teal-50 text-teal-700' : 'border-red-300 bg-red-50 text-red-600'
+                          }`}
+                        >
+                          <Database className="w-3.5 h-3.5" />
+                          {d.nro_lote || 'Elegir lote'}
+                        </button>
+                      );
+                    })()}
                   </td>
                   <td className="p-3 text-center">
                     <button
@@ -312,6 +374,13 @@ export default function AjustesStock() {
         onClose={() => setIsModalOpen(false)}
         productos={productos}
         onSelect={handleProductSelect}
+      />
+
+      <BatchSearchModal
+        isOpen={isBatchModalOpen}
+        onClose={() => setIsBatchModalOpen(false)}
+        producto={selectedProductForBatch}
+        onSelect={handleBatchSelect}
       />
     </div>
   );
