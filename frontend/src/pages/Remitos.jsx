@@ -24,8 +24,10 @@ export default function Remitos() {
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isPedidoModalOpen, setIsPedidoModalOpen] = useState(false);
+  const [isPedidoGlobalModalOpen, setIsPedidoGlobalModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [pedidosPendientes, setPedidosPendientes] = useState([]);
+  const [pedidosPendientesGlobal, setPedidosPendientesGlobal] = useState([]);
   const [selectedProductForBatch, setSelectedProductForBatch] = useState(null);
   
   const [activeRowId, setActiveRowId] = useState(null);
@@ -169,9 +171,8 @@ export default function Remitos() {
     }
   };
 
-  const loadFromPedido = (pedido) => {
-    setHead({ ...head, pedido_id: pedido.id });
-    const newDetalles = pedido.detalles
+  const buildDetallesFromPedido = (pedido) => {
+    return pedido.detalles
       .filter(det => (det.cantidad - det.entregado) > 0)
       .map(det => ({
         temp_id: Date.now() + Math.random(),
@@ -183,13 +184,52 @@ export default function Remitos() {
         nro_lote: null,
         fecha_vencimiento: null
       }));
-    
+  };
+
+  const loadFromPedido = (pedido) => {
+    setHead({ ...head, pedido_id: pedido.id });
+    const newDetalles = buildDetallesFromPedido(pedido);
+
     if (newDetalles.length > 0) {
       setDetalles(newDetalles);
     } else {
       alert("Este pedido no tiene saldos pendientes.");
     }
     setIsPedidoModalOpen(false);
+  };
+
+  const fetchPedidosPendientesGlobal = async () => {
+    try {
+      const res = await api.get('/api/remitos/pendientes');
+      setPedidosPendientesGlobal(res.data);
+    } catch (error) {
+      console.error("Error al buscar pedidos pendientes:", error);
+    }
+  };
+
+  const openPedidoGlobalModal = () => {
+    fetchPedidosPendientesGlobal();
+    setIsPedidoGlobalModalOpen(true);
+  };
+
+  const startRemitoFromPedido = (pedido) => {
+    const newDetalles = buildDetallesFromPedido(pedido);
+    if (newDetalles.length === 0) {
+      alert("Este pedido no tiene saldos pendientes.");
+      return;
+    }
+    setHead({
+      punto_venta_id: puntosVenta.length > 0 ? puntosVenta[0].id : '',
+      cliente_id: pedido.cliente_id,
+      pedido_id: pedido.id,
+      descuenta_stock: true,
+      observaciones: '',
+      total: 0
+    });
+    setDetalles(newDetalles);
+    setErrorMsg('');
+    setIsPedidoGlobalModalOpen(false);
+    setIsModalOpen(true);
   };
 
   const handleSave = async (e) => {
@@ -290,9 +330,14 @@ export default function Remitos() {
             <p className="text-xs text-emerald-600 font-bold tracking-wide uppercase mt-1">Control de Entregas</p>
           </div>
         </div>
-        <button onClick={openModal} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-md flex items-center transition-all">
-          <Plus className="w-5 h-5 mr-2" /> Nuevo Remito
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={openPedidoGlobalModal} className="bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-50 px-5 py-2.5 rounded-xl font-bold shadow-sm flex items-center transition-all">
+            <ClipboardList className="w-5 h-5 mr-2" /> Nuevo Remito desde Pedido
+          </button>
+          <button onClick={openModal} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-md flex items-center transition-all">
+            <Plus className="w-5 h-5 mr-2" /> Nuevo Remito
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -432,6 +477,7 @@ export default function Remitos() {
                        <th className="p-3 w-1/2 border-b">Producto</th>
                        <th className="p-3 border-b text-center w-32">Lote</th>
                        <th className="p-3 border-b text-center w-32">Cantidad</th>
+                       <th className="p-3 border-b text-center w-20">Unidad</th>
                        <th className="p-3 border-b text-right">Precio Ref.</th>
                        <th className="p-3 border-b text-right bg-slate-100">Subtotal</th>
                        <th className="p-3 border-b text-center w-12"></th>
@@ -485,6 +531,9 @@ export default function Remitos() {
                                value={d.cantidad} 
                                onChange={e => updateDetalle(d.temp_id, 'cantidad', parseFloat(e.target.value)||0)} 
                              />
+                           </td>
+                           <td className="p-2 text-center text-xs font-bold text-gray-500">
+                             {productos.find(p => p.id === d.producto_id)?.unidad || '—'}
                            </td>
                           <td className="p-2">
                              <div className="flex items-center">
@@ -572,6 +621,11 @@ export default function Remitos() {
               return d;
            }));
            setIsBatchModalOpen(false);
+           const rowId = activeRowId;
+           setTimeout(() => {
+              quantityRefs.current[rowId]?.focus();
+              quantityRefs.current[rowId]?.select();
+           }, 100);
         }}
       />
 
@@ -600,6 +654,41 @@ export default function Remitos() {
                              </div>
                              <div className="text-right">
                                 <p className="font-black text-blue-700">$ {p.total.toLocaleString()}</p>
+                             </div>
+                          </div>
+                       ))}
+                    </div>
+                 )}
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Modal Pedidos Pendientes (todos los clientes) */}
+      {isPedidoGlobalModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
+              <div className="p-4 border-b bg-emerald-600 text-white flex justify-between items-center">
+                 <h4 className="font-bold flex items-center"><ClipboardList className="w-5 h-5 mr-2" /> Pedidos Pendientes</h4>
+                 <button onClick={() => setIsPedidoGlobalModalOpen(false)}><X className="w-5 h-5" /></button>
+              </div>
+              <div className="p-4 max-h-96 overflow-y-auto">
+                 {pedidosPendientesGlobal.length === 0 ? (
+                    <p className="text-center py-8 text-gray-500 font-bold">No hay pedidos con saldo pendiente.</p>
+                 ) : (
+                    <div className="space-y-3">
+                       {pedidosPendientesGlobal.map(p => (
+                          <div
+                            key={p.id}
+                            onClick={() => startRemitoFromPedido(p)}
+                            className="p-4 border rounded-xl hover:border-emerald-500 hover:bg-emerald-50 cursor-pointer transition-all flex justify-between items-center"
+                          >
+                             <div>
+                                <p className="font-black text-gray-800">Pedido #{String(p.numero_comprobante).padStart(8,'0')}</p>
+                                <p className="text-xs text-gray-500 font-bold">{p.cliente?.razon_social} — {new Date(p.fecha).toLocaleDateString()} - {p.estado}</p>
+                             </div>
+                             <div className="text-right">
+                                <p className="font-black text-emerald-700">$ {p.total.toLocaleString()}</p>
                              </div>
                           </div>
                        ))}

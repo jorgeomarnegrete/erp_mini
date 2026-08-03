@@ -113,6 +113,13 @@ def get_pedidos_pendientes_cliente(db: Session, cliente_id: int):
     ).all()
     return pedidos
 
+def get_pedidos_pendientes(db: Session):
+    """Obtiene pedidos con saldo pendiente de entrega, de cualquier cliente"""
+    pedidos = db.query(Pedido).filter(
+        Pedido.estado.in_(["Pendiente", "Parcial"])
+    ).order_by(Pedido.fecha.desc()).all()
+    return pedidos
+
 def get_remitos_para_asignar(db: Session, zona_ids: List[int]):
     """Obtiene remitos sin transporte filtrados por múltiples zonas de entrega"""
     query = db.query(Remito).join(Cliente).filter(

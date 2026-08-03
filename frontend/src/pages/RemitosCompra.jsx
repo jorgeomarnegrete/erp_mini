@@ -122,10 +122,21 @@ export default function RemitosCompra() {
               newData.producto_id = prod.id;
               newData.precio_unitario = prod.costo_neto || 0;
               newData.subtotal = newData.cantidad * newData.precio_unitario;
-              
-              // Foco automático a la fecha de vencimiento al elegir producto
+
+              if (!newData.fecha_vencimiento) {
+                 const dateObj = new Date();
+                 dateObj.setFullYear(dateObj.getFullYear() + 1);
+                 const yyyy = dateObj.getFullYear();
+                 const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                 const dd = String(dateObj.getDate()).padStart(2, '0');
+                 newData.fecha_vencimiento = `${yyyy}-${mm}-${dd}`;
+                 newData.nro_lote = `${yyyy}${mm}${dd}-001`;
+              }
+
+              // Foco automático a la cantidad, seleccionada, al elegir producto
               setTimeout(() => {
-                 document.getElementById(`venc-${temp_id}`)?.focus();
+                 quantityRefs.current[temp_id]?.focus();
+                 quantityRefs.current[temp_id]?.select();
               }, 100);
            }
         }
@@ -344,6 +355,7 @@ export default function RemitosCompra() {
                      <tr>
                        <th className="p-3 w-1/3 border-b">Producto</th>
                        <th className="p-3 border-b text-center w-24">Cantidad</th>
+                       <th className="p-3 border-b text-center w-20">Unidad</th>
                        <th className="p-3 border-b text-center w-40">Vencimiento</th>
                        <th className="p-3 border-b text-center w-40">Lote Interno</th>
                        <th className="p-3 border-b text-right">Costo Unit.</th>
@@ -383,8 +395,11 @@ export default function RemitosCompra() {
                                 onChange={e => updateDetalle(d.temp_id, 'cantidad', parseFloat(e.target.value)||0)} 
                               />
                             </td>
+                            <td className="p-2 text-center text-xs font-bold text-gray-500">
+                              {productos.find(p => p.id === d.producto_id)?.unidad || '—'}
+                            </td>
                             <td className="p-2">
-                              <input 
+                              <input
                                 id={`venc-${d.temp_id}`}
                                 type="date" 
                                 className="w-full p-1.5 rounded border border-gray-300 text-center font-bold text-xs" 

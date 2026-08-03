@@ -19,6 +19,11 @@ async def read_remitos(skip: int = 0, limit: int = 100, current_user: User = Dep
     """Obtiene el historial de remitos"""
     return crud_remito.get_remitos(db, skip=skip, limit=limit)
 
+@router.get("/pendientes", response_model=List[PedidoResponse])
+async def read_pedidos_pendientes_todos(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Obtiene todos los pedidos pendientes, de cualquier cliente"""
+    return crud_remito.get_pedidos_pendientes(db)
+
 @router.get("/{remito_id}", response_model=RemitoResponse)
 async def read_remito(remito_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Obtiene un remito específico"""
