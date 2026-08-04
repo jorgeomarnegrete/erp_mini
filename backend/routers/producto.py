@@ -1,13 +1,39 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models.user import User
 from schemas.producto import ProductoCreate, ProductoUpdate, ProductoResponse
+from schemas.producto_import import ImportProductoResumen, ImportProductoConfirmarResponse
 from crud import producto as crud_prod
+from crud import producto_import as crud_producto_import
 from routers.auth import get_current_user
 
 router = APIRouter(prefix="/api/productos", tags=["producto"])
+
+
+@router.post("/actualizar/preview", response_model=ImportProductoResumen)
+async def preview_actualizar_productos(file: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Analiza la planilla ARTICULOS.xlsx de Tango sin escribir nada en la base, y devuelve un resumen clasificado"""
+    file_bytes = await file.read()
+    clasificados = crud_producto_import.clasificar_productos(db, file_bytes)
+    resumen = crud_producto_import.resumir(clasificados)
+    return {**resumen, "productos": clasificados}
+
+
+@router.post("/actualizar/confirmar", response_model=ImportProductoConfirmarResponse)
+async def confirmar_actualizar_productos(file: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Ejecuta la actualización: crea las categorías y productos que faltan"""
+    file_bytes = await file.read()
+    try:
+        creados, categorias_creadas = crud_producto_import.aplicar_importacion(db, file_bytes)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"creados": creados, "categorias_creadas": categorias_creadas}
+
 
 @router.get("", response_model=list[ProductoResponse])
 async def read_all_productos(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

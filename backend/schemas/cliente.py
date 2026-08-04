@@ -22,6 +22,7 @@ class ClienteBase(BaseModel):
     direccion: Optional[str] = None
     zona_id: Optional[int] = None
     observaciones: Optional[str] = None
+    codigo_interno: Optional[str] = None
     activo: bool = True
 
 class ClienteCreate(ClienteBase):
@@ -43,6 +44,7 @@ class ClienteUpdate(BaseModel):
     direccion: str | None = None
     zona_id: int | None = None
     observaciones: str | None = None
+    codigo_interno: str | None = None
     activo: bool | None = None
 
 class ClienteResponse(ClienteBase):

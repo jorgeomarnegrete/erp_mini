@@ -12,6 +12,7 @@ class Cliente(Base):
     tipo_doc_id = Column(Integer, ForeignKey("tipo_doc.id"), nullable=False)
     documento = Column(String, unique=True, index=True, nullable=False)
     tipo_resp_id = Column(Integer, ForeignKey("tipo_resp.id"), nullable=False)
+    codigo_interno = Column(String, index=True, nullable=True)  # COD_CLIENT del ERP Tango
     
     # Operativos Módulo Ventas
     lista_precio_id = Column(Integer, ForeignKey("lista_precio.id"), nullable=True)

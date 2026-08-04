@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { Package, Edit, Trash2, Plus, X, Search, Tags, Calculator, PercentCircle, Printer, Save, Link2 } from 'lucide-react';
+import { Package, Edit, Trash2, Plus, X, Search, Tags, Calculator, PercentCircle, Printer, Save, Link2, Upload, AlertCircle, CheckCircle2, MinusCircle } from 'lucide-react';
 import nunjucks from 'nunjucks';
 
 export default function Productos() {
@@ -28,6 +28,14 @@ export default function Productos() {
 
   // Lotes del producto en edición (solo lectura — se generan por remito/ingreso/OP)
   const [editLotes, setEditLotes] = useState([]);
+
+  // Estados Actualizar Productos (importación desde Tango)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importResumen, setImportResumen] = useState(null);
+  const [importResult, setImportResult] = useState(null);
+  const [importError, setImportError] = useState('');
+  const [isImportBusy, setIsImportBusy] = useState(false);
 
   // Etiqueta Modal State
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
@@ -82,6 +90,50 @@ export default function Productos() {
     setEditLotes([]);
     setFormError('');
     setIsModalOpen(true);
+  };
+
+  const openImportModal = () => {
+    setImportFile(null);
+    setImportResumen(null);
+    setImportResult(null);
+    setImportError('');
+    setIsImportModalOpen(true);
+  };
+
+  const handleImportFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImportFile(file);
+    setImportResumen(null);
+    setImportResult(null);
+    setImportError('');
+    setIsImportBusy(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/api/productos/actualizar/preview', formData);
+      setImportResumen(res.data);
+    } catch (error) {
+      setImportError(error.response?.data?.detail || 'Error al analizar el archivo.');
+    }
+    setIsImportBusy(false);
+  };
+
+  const handleConfirmarImport = async () => {
+    if (!importFile) return;
+    setIsImportBusy(true);
+    setImportError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      const res = await api.post('/api/productos/actualizar/confirmar', formData);
+      setImportResult(res.data);
+      setImportResumen(null);
+      fetchAllData();
+    } catch (error) {
+      setImportError(error.response?.data?.detail || 'Error al confirmar la actualización.');
+    }
+    setIsImportBusy(false);
   };
 
   const openLabelModal = async (prod) => {
@@ -308,8 +360,11 @@ export default function Productos() {
           <span className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold shadow-sm border border-indigo-200">
             {filteredProductos.length} de {productos.length} SKUs
           </span>
+          <button onClick={openImportModal} className="flex items-center bg-white text-indigo-700 border border-indigo-300 hover:bg-indigo-50 px-4 py-2.5 rounded-xl font-bold transition-all shadow-sm">
+            <Upload className="w-5 h-5 mr-1" /> Actualizar Productos
+          </button>
           <button onClick={openCreateModal} className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-bold transition-all shadow-md">
-            <Plus className="w-5 h-5 mr-1" /> Nuevo Producto  
+            <Plus className="w-5 h-5 mr-1" /> Nuevo Producto
           </button>
         </div>
       </div>
@@ -747,6 +802,132 @@ export default function Productos() {
                   </div>
                 )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Actualizar Productos */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 bg-gray-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh] mt-4 mb-4 transform transition-all border-t-8 border-indigo-600">
+            <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50/50 rounded-t-xl">
+              <h3 className="text-xl font-black text-gray-800 flex items-center">
+                <Upload className="w-6 h-6 mr-3 text-indigo-600" />
+                Actualizar Productos
+              </h3>
+              <button type="button" disabled={isImportBusy} onClick={() => setIsImportModalOpen(false)} className="text-gray-400 hover:text-red-500">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {!importResult && (
+                <div className="mb-6">
+                  <label className="block text-xs font-bold text-gray-500 mb-2">Planilla de artículos de Tango (.xlsx)</label>
+                  <input
+                    type="file"
+                    accept=".xlsx"
+                    onChange={handleImportFileChange}
+                    disabled={isImportBusy}
+                    className="w-full p-2.5 rounded-xl border border-gray-300 text-sm font-medium"
+                  />
+                  <p className="text-xs text-gray-400 mt-2">Da de alta los productos que falten (por código interno). Los que ya existen no se modifican.</p>
+                </div>
+              )}
+
+              {isImportBusy && (
+                <p className="text-center py-8 text-gray-500 font-bold">Procesando...</p>
+              )}
+
+              {importError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm font-bold flex items-center">
+                  <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" /> {importError}
+                </div>
+              )}
+
+              {importResult && (
+                <div className="text-center py-8">
+                  <CheckCircle2 className="w-12 h-12 mx-auto text-emerald-500 mb-3" />
+                  <p className="font-black text-gray-800 text-lg">Actualización completada</p>
+                  <p className="text-sm text-gray-500 font-bold mt-1">
+                    {importResult.creados} producto(s) nuevo(s) · {importResult.categorias_creadas} categoría(s) nueva(s)
+                  </p>
+                </div>
+              )}
+
+              {importResumen && !isImportBusy && (
+                <div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                      <p className="text-2xl font-black text-emerald-700">{importResumen.nuevos}</p>
+                      <p className="text-[10px] font-bold uppercase text-emerald-600">Nuevos</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-center">
+                      <p className="text-2xl font-black text-gray-600">{importResumen.sin_cambios}</p>
+                      <p className="text-[10px] font-bold uppercase text-gray-500">Sin Cambios</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-center">
+                      <p className="text-2xl font-black text-amber-700">{importResumen.categorias_nuevas.length}</p>
+                      <p className="text-[10px] font-bold uppercase text-amber-600">Categorías Nuevas</p>
+                    </div>
+                  </div>
+
+                  {importResumen.categorias_nuevas.length > 0 && (
+                    <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200">
+                      <p className="text-xs font-black uppercase text-amber-700 mb-1">Se van a crear estas categorías:</p>
+                      <p className="text-sm font-bold text-amber-800">{importResumen.categorias_nuevas.join(' · ')}</p>
+                    </div>
+                  )}
+
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Productos nuevos a crear</p>
+                  <div className="space-y-2 max-h-72 overflow-y-auto">
+                    {importResumen.productos.filter(p => p.clasificacion === 'nuevo').map((p, idx) => (
+                      <div key={`${p.codigo_interno}-${idx}`} className="p-3 rounded-xl border flex items-center justify-between text-emerald-600 bg-emerald-50 border-emerald-200">
+                        <div className="flex items-center min-w-0">
+                          <CheckCircle2 className="w-4 h-4 mr-2 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-gray-800 truncate">
+                              {p.codigo_interno} — {p.nombre}
+                            </p>
+                            <p className="text-xs font-medium">{p.familia || 'Sin familia'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {importResumen.nuevos === 0 && (
+                      <p className="text-center py-4 text-gray-400 text-sm font-bold flex items-center justify-center">
+                        <MinusCircle className="w-4 h-4 mr-2" /> No hay productos nuevos para crear.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {importResumen && !importResult && (
+              <div className="px-6 py-4 bg-gray-50 border-t flex justify-end items-center gap-3 rounded-b-xl">
+                <button type="button" disabled={isImportBusy} onClick={() => setIsImportModalOpen(false)} className="px-6 py-2.5 text-gray-700 bg-white border shadow-sm rounded-xl font-bold hover:bg-gray-100">
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={isImportBusy || importResumen.nuevos === 0}
+                  onClick={handleConfirmarImport}
+                  className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-black shadow-lg hover:bg-indigo-700 flex items-center disabled:opacity-50"
+                >
+                  <Save className="w-5 h-5 mr-2" />
+                  Confirmar ({importResumen.nuevos})
+                </button>
+              </div>
+            )}
+
+            {importResult && (
+              <div className="px-6 py-4 bg-gray-50 border-t flex justify-end items-center gap-3 rounded-b-xl">
+                <button type="button" onClick={() => setIsImportModalOpen(false)} className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-black shadow-lg hover:bg-indigo-700">
+                  Cerrar
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

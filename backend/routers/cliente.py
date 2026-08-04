@@ -1,13 +1,39 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models.user import User
 from schemas.cliente import ClienteCreate, ClienteUpdate, ClienteResponse
+from schemas.cliente_import import ImportClienteResumen, ImportClienteConfirmarResponse
 from crud import cliente as crud_cliente
+from crud import cliente_import as crud_cliente_import
 from routers.auth import get_current_user
 
 router = APIRouter(prefix="/api/clientes", tags=["cliente"])
+
+
+@router.post("/actualizar/preview", response_model=ImportClienteResumen)
+async def preview_actualizar_clientes(file: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Analiza la planilla CLIENTES.xlsx de Tango sin escribir nada en la base, y devuelve un resumen clasificado"""
+    file_bytes = await file.read()
+    clasificados = crud_cliente_import.clasificar_clientes(db, file_bytes)
+    resumen = crud_cliente_import.resumir(clasificados)
+    return {**resumen, "clientes": clasificados}
+
+
+@router.post("/actualizar/confirmar", response_model=ImportClienteConfirmarResponse)
+async def confirmar_actualizar_clientes(file: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Ejecuta la actualización: vincula codigo_interno en existentes y crea los que faltan"""
+    file_bytes = await file.read()
+    try:
+        vinculados, creados = crud_cliente_import.aplicar_importacion(db, file_bytes)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"vinculados": vinculados, "creados": creados}
+
 
 @router.get("", response_model=list[ClienteResponse])
 async def read_all_clientes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

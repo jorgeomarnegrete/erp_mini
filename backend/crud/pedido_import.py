@@ -80,7 +80,11 @@ def clasificar_pedidos(db: Session, file_bytes: bytes):
             resultado.append(item)
             continue
 
-        clientes_match = db.query(Cliente).filter(Cliente.razon_social == head["razon_social"]).all()
+        clientes_match = db.query(Cliente).filter(Cliente.codigo_interno == head["cod_cliente"]).all()
+        if len(clientes_match) != 1:
+            # Fallback para clientes que todavía no tienen codigo_interno vinculado
+            # (ver "Actualizar Clientes" en la grilla de Clientes)
+            clientes_match = db.query(Cliente).filter(Cliente.razon_social == head["razon_social"]).all()
         if len(clientes_match) != 1:
             item["clasificacion"] = "error"
             item["motivo"] = "Cliente no encontrado" if not clientes_match else "Cliente ambiguo (varios con el mismo nombre)"

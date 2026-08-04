@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../App';
-import { UserCheck, Edit, Trash2, Plus, CheckCircle2, XCircle, Search, Save, X, Building2, MapPin, Phone, Hash } from 'lucide-react';
+import { UserCheck, Edit, Trash2, Plus, CheckCircle2, XCircle, Search, Save, X, Building2, MapPin, Phone, Hash, Upload, AlertCircle, MinusCircle, HelpCircle } from 'lucide-react';
 
 const normalizeString = (str) => {
   return str ? str.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim() : "";
@@ -46,6 +46,14 @@ export default function Clientes() {
   });
   
   const [formError, setFormError] = useState('');
+
+  // Estados Actualizar Clientes (importación desde Tango)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importResumen, setImportResumen] = useState(null);
+  const [importResult, setImportResult] = useState(null);
+  const [importError, setImportError] = useState('');
+  const [isImportBusy, setIsImportBusy] = useState(false);
 
   // 1. Carga Inicial de Toda la data
   const fetchAllData = async () => {
@@ -166,6 +174,51 @@ export default function Clientes() {
     }
   };
 
+  const openImportModal = () => {
+    setImportFile(null);
+    setImportResumen(null);
+    setImportResult(null);
+    setImportError('');
+    setIsImportModalOpen(true);
+  };
+
+  const handleImportFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImportFile(file);
+    setImportResumen(null);
+    setImportResult(null);
+    setImportError('');
+    setIsImportBusy(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/api/clientes/actualizar/preview', formData);
+      setImportResumen(res.data);
+    } catch (error) {
+      setImportError(error.response?.data?.detail || 'Error al analizar el archivo.');
+    }
+    setIsImportBusy(false);
+  };
+
+  const handleConfirmarImport = async () => {
+    if (!importFile) return;
+    setIsImportBusy(true);
+    setImportError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      const res = await api.post('/api/clientes/actualizar/confirmar', formData);
+      setImportResult(res.data);
+      setImportResumen(null);
+      const cliRes = await api.get('/api/clientes');
+      setClientes(cliRes.data);
+    } catch (error) {
+      setImportError(error.response?.data?.detail || 'Error al confirmar la actualización.');
+    }
+    setIsImportBusy(false);
+  };
+
   if (loading) return (
      <div className="flex flex-col justify-center items-center h-64 text-indigo-600">
        <span className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></span>
@@ -216,6 +269,9 @@ export default function Clientes() {
           <span className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold shadow-sm whitespace-nowrap">
             {filteredClientes.length} / {clientes.length} Cuentas
           </span>
+          <button onClick={openImportModal} className="flex items-center bg-white text-indigo-700 border border-indigo-300 hover:bg-indigo-50 px-4 py-2 rounded-lg font-bold transition-colors shadow-sm whitespace-nowrap">
+            <Upload className="w-5 h-5 mr-1" /> Actualizar Clientes
+          </button>
           <button onClick={openCreateModal} className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm whitespace-nowrap">
             <Plus className="w-5 h-5 mr-1" /> Nuevo Cliente
           </button>
@@ -473,6 +529,135 @@ export default function Clientes() {
                   <Save className="w-5 h-5 mr-2" /> {modalMode === 'create' ? 'Guardar' : 'Guardar'}
                 </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Actualizar Clientes */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 bg-gray-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh] mt-4 mb-4 transform transition-all border-t-8 border-indigo-600">
+            <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50/50 rounded-t-xl">
+              <h3 className="text-xl font-black text-gray-800 flex items-center">
+                <Upload className="w-6 h-6 mr-3 text-indigo-600" />
+                Actualizar Clientes
+              </h3>
+              <button type="button" disabled={isImportBusy} onClick={() => setIsImportModalOpen(false)} className="text-gray-400 hover:text-red-500">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {!importResult && (
+                <div className="mb-6">
+                  <label className="block text-xs font-bold text-gray-500 mb-2">Planilla de clientes de Tango (.xlsx)</label>
+                  <input
+                    type="file"
+                    accept=".xlsx"
+                    onChange={handleImportFileChange}
+                    disabled={isImportBusy}
+                    className="w-full p-2.5 rounded-xl border border-gray-300 text-sm font-medium"
+                  />
+                  <p className="text-xs text-gray-400 mt-2">Vincula el código interno (COD_CLIENT) en los clientes existentes por CUIT, y da de alta los que falten.</p>
+                </div>
+              )}
+
+              {isImportBusy && (
+                <p className="text-center py-8 text-gray-500 font-bold">Procesando...</p>
+              )}
+
+              {importError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm font-bold flex items-center">
+                  <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" /> {importError}
+                </div>
+              )}
+
+              {importResult && (
+                <div className="text-center py-8">
+                  <CheckCircle2 className="w-12 h-12 mx-auto text-emerald-500 mb-3" />
+                  <p className="font-black text-gray-800 text-lg">Actualización completada</p>
+                  <p className="text-sm text-gray-500 font-bold mt-1">
+                    {importResult.vinculados} vinculado(s) · {importResult.creados} cliente(s) nuevo(s)
+                  </p>
+                </div>
+              )}
+
+              {importResumen && !isImportBusy && (
+                <div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                    <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-center">
+                      <p className="text-2xl font-black text-indigo-700">{importResumen.a_vincular}</p>
+                      <p className="text-[10px] font-bold uppercase text-indigo-600">A Vincular</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                      <p className="text-2xl font-black text-emerald-700">{importResumen.nuevos}</p>
+                      <p className="text-[10px] font-bold uppercase text-emerald-600">Nuevos</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                      <p className="text-2xl font-black text-slate-600">{importResumen.sin_documento}</p>
+                      <p className="text-[10px] font-bold uppercase text-slate-500">Sin Documento</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-center">
+                      <p className="text-2xl font-black text-red-700">{importResumen.ambiguos}</p>
+                      <p className="text-[10px] font-bold uppercase text-red-600">Ambiguos</p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Casos que requieren revisión manual (no se tocan al confirmar)</p>
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {importResumen.clientes.filter(c => c.clasificacion === 'sin_documento' || c.clasificacion === 'ambiguo').map((c, idx) => {
+                      const cfg = {
+                        sin_documento: { icon: MinusCircle, cls: 'text-slate-500 bg-slate-50 border-slate-200', label: 'Sin documento' },
+                        ambiguo: { icon: HelpCircle, cls: 'text-red-600 bg-red-50 border-red-200', label: 'Ambiguo' },
+                      }[c.clasificacion];
+                      const Icon = cfg.icon;
+                      return (
+                        <div key={`${c.codigo_interno}-${idx}`} className={`p-3 rounded-xl border flex items-center justify-between ${cfg.cls}`}>
+                          <div className="flex items-center min-w-0">
+                            <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="font-bold text-sm text-gray-800 truncate">
+                                {c.codigo_interno} — {c.razon_social}
+                              </p>
+                              {c.motivo && <p className="text-xs font-medium">{c.motivo}</p>}
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-black uppercase tracking-wide flex-shrink-0 ml-2">{cfg.label}</span>
+                        </div>
+                      );
+                    })}
+                    {importResumen.sin_documento === 0 && importResumen.ambiguos === 0 && (
+                      <p className="text-center py-4 text-gray-400 text-sm font-bold">Sin casos pendientes de revisión.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {importResumen && !importResult && (
+              <div className="px-6 py-4 bg-gray-50 border-t flex justify-end items-center gap-3 rounded-b-xl">
+                <button type="button" disabled={isImportBusy} onClick={() => setIsImportModalOpen(false)} className="px-6 py-2.5 text-gray-700 bg-white border shadow-sm rounded-xl font-bold hover:bg-gray-100">
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={isImportBusy || (importResumen.a_vincular === 0 && importResumen.nuevos === 0)}
+                  onClick={handleConfirmarImport}
+                  className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-black shadow-lg hover:bg-indigo-700 flex items-center disabled:opacity-50"
+                >
+                  <Save className="w-5 h-5 mr-2" />
+                  Confirmar ({importResumen.a_vincular + importResumen.nuevos})
+                </button>
+              </div>
+            )}
+
+            {importResult && (
+              <div className="px-6 py-4 bg-gray-50 border-t flex justify-end items-center gap-3 rounded-b-xl">
+                <button type="button" onClick={() => setIsImportModalOpen(false)} className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-black shadow-lg hover:bg-indigo-700">
+                  Cerrar
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
