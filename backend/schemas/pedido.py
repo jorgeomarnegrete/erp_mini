@@ -51,7 +51,8 @@ class PedidoResponse(PedidoBase):
     fecha: datetime
     numero_comprobante: int
     usuario_id: int
-    
+    origen_externo: Optional[str] = None
+
     punto_venta: PuntoVentaResponse
     cliente: ClienteResponse
     vendedor: Optional[VendedorResponse] = None

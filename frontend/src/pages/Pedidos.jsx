@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../App';
-import { ClipboardList, Plus, Trash2, X, Save, AlertCircle, Search } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, X, Save, AlertCircle, Search, Upload, CheckCircle2, XCircle, MinusCircle, HelpCircle } from 'lucide-react';
 import ProductSearchModal from '../components/ProductSearchModal';
 import ClientSearchModal from '../components/ClientSearchModal';
 
@@ -24,6 +24,15 @@ export default function Pedidos() {
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [activeRowId, setActiveRowId] = useState(null);
+
+  // Estados Importar Pedidos
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importResumen, setImportResumen] = useState(null);
+  const [importResult, setImportResult] = useState(null);
+  const [importError, setImportError] = useState('');
+  const [isImportBusy, setIsImportBusy] = useState(false);
+
   const quantityRefs = useRef({});
   const productRefs = useRef({});
   const deliveryDateRef = useRef(null);
@@ -106,6 +115,56 @@ export default function Pedidos() {
     setDetalles([{ temp_id: Date.now(), producto_id: '', leyenda: '', cantidad: 1, precio_unitario: 0, iva_porcentaje: 0, disponible: null, error_stock: false }]);
     setErrorMsg('');
     setIsModalOpen(true);
+  };
+
+  const openImportModal = () => {
+    setImportFile(null);
+    setImportResumen(null);
+    setImportResult(null);
+    setImportError('');
+    setIsImportModalOpen(true);
+  };
+
+  const handleImportFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImportFile(file);
+    setImportResumen(null);
+    setImportResult(null);
+    setImportError('');
+    setIsImportBusy(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/api/pedidos/importar/preview', formData);
+      setImportResumen(res.data);
+    } catch (error) {
+      setImportError(error.response?.data?.detail || 'Error al analizar el archivo.');
+    }
+    setIsImportBusy(false);
+  };
+
+  const handleConfirmarImport = async () => {
+    if (!importFile) return;
+    const pv_id = puntosVenta.length > 0 ? puntosVenta[0].id : '';
+    if (!pv_id) {
+      setImportError('No hay un Punto de Venta activo configurado.');
+      return;
+    }
+    setIsImportBusy(true);
+    setImportError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('punto_venta_id', pv_id);
+      const res = await api.post('/api/pedidos/importar/confirmar', formData);
+      setImportResult(res.data);
+      setImportResumen(null);
+      fetchData();
+    } catch (error) {
+      setImportError(error.response?.data?.detail || 'Error al confirmar la importación.');
+    }
+    setIsImportBusy(false);
   };
 
   const addDetalle = () => {
@@ -302,9 +361,14 @@ export default function Pedidos() {
             <p className="text-xs text-blue-600 font-bold tracking-wide uppercase mt-1">Gestión de Envíos y Compromisos</p>
           </div>
         </div>
-        <button onClick={openModal} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-md flex items-center transition-all">
-          <Plus className="w-5 h-5 mr-2" /> Nuevo Pedido
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={openImportModal} className="bg-white text-blue-700 border border-blue-300 hover:bg-blue-50 px-5 py-2.5 rounded-xl font-bold shadow-sm flex items-center transition-all">
+            <Upload className="w-5 h-5 mr-2" /> Importar Pedidos
+          </button>
+          <button onClick={openModal} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-md flex items-center transition-all">
+            <Plus className="w-5 h-5 mr-2" /> Nuevo Pedido
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -542,8 +606,139 @@ export default function Pedidos() {
         </div>
       )}
 
+      {/* Modal Importar Pedidos */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 bg-gray-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh] mt-4 mb-4 transform transition-all border-t-8 border-blue-600">
+            <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50/50 rounded-t-xl">
+              <h3 className="text-xl font-black text-gray-800 flex items-center">
+                <Upload className="w-6 h-6 mr-3 text-blue-600" />
+                Importar Pedidos
+              </h3>
+              <button type="button" disabled={isImportBusy} onClick={() => setIsImportModalOpen(false)} className="text-gray-400 hover:text-red-500">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {!importResult && (
+                <div className="mb-6">
+                  <label className="block text-xs font-bold text-gray-500 mb-2">Planilla de pedidos (.xlsx)</label>
+                  <input
+                    type="file"
+                    accept=".xlsx"
+                    onChange={handleImportFileChange}
+                    disabled={isImportBusy}
+                    className="w-full p-2.5 rounded-xl border border-gray-300 text-sm font-medium"
+                  />
+                </div>
+              )}
+
+              {isImportBusy && (
+                <p className="text-center py-8 text-gray-500 font-bold">Procesando...</p>
+              )}
+
+              {importError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm font-bold flex items-center">
+                  <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" /> {importError}
+                </div>
+              )}
+
+              {importResult && (
+                <div className="text-center py-8">
+                  <CheckCircle2 className="w-12 h-12 mx-auto text-emerald-500 mb-3" />
+                  <p className="font-black text-gray-800 text-lg">Importación completada</p>
+                  <p className="text-sm text-gray-500 font-bold mt-1">
+                    {importResult.creados} pedido(s) nuevo(s) · {importResult.actualizados} actualizado(s)
+                  </p>
+                </div>
+              )}
+
+              {importResumen && !isImportBusy && (
+                <div>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                      <p className="text-2xl font-black text-emerald-700">{importResumen.nuevos}</p>
+                      <p className="text-[10px] font-bold uppercase text-emerald-600">Nuevos</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-center">
+                      <p className="text-2xl font-black text-amber-700">{importResumen.modificados}</p>
+                      <p className="text-[10px] font-bold uppercase text-amber-600">Modificados</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-center">
+                      <p className="text-2xl font-black text-gray-600">{importResumen.sin_cambios}</p>
+                      <p className="text-[10px] font-bold uppercase text-gray-500">Sin Cambios</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-center">
+                      <p className="text-2xl font-black text-red-700">{importResumen.errores}</p>
+                      <p className="text-[10px] font-bold uppercase text-red-600">Con Error</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                      <p className="text-2xl font-black text-slate-600">{importResumen.ignorados_estado}</p>
+                      <p className="text-[10px] font-bold uppercase text-slate-500">No Aprobados</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {importResumen.pedidos.map(p => {
+                      const cfg = {
+                        nuevo: { icon: CheckCircle2, cls: 'text-emerald-600 bg-emerald-50 border-emerald-200', label: 'Nuevo' },
+                        modificado: { icon: AlertCircle, cls: 'text-amber-600 bg-amber-50 border-amber-200', label: 'Modificado' },
+                        sin_cambios: { icon: MinusCircle, cls: 'text-gray-500 bg-gray-50 border-gray-200', label: 'Sin cambios' },
+                        error: { icon: XCircle, cls: 'text-red-600 bg-red-50 border-red-200', label: 'Error' },
+                        ignorado_estado: { icon: HelpCircle, cls: 'text-slate-500 bg-slate-50 border-slate-200', label: 'No aprobado' },
+                      }[p.clasificacion];
+                      const Icon = cfg.icon;
+                      return (
+                        <div key={p.origen_externo} className={`p-3 rounded-xl border flex items-center justify-between ${cfg.cls}`}>
+                          <div className="flex items-center min-w-0">
+                            <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="font-bold text-sm text-gray-800 truncate">
+                                Pedido {p.origen_externo} — {p.cliente_nombre}
+                              </p>
+                              {p.motivo && <p className="text-xs font-medium">{p.motivo}</p>}
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-black uppercase tracking-wide flex-shrink-0 ml-2">{cfg.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {importResumen && !importResult && (
+              <div className="px-6 py-4 bg-gray-50 border-t flex justify-end items-center gap-3 rounded-b-xl">
+                <button type="button" disabled={isImportBusy} onClick={() => setIsImportModalOpen(false)} className="px-6 py-2.5 text-gray-700 bg-white border shadow-sm rounded-xl font-bold hover:bg-gray-100">
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={isImportBusy || (importResumen.nuevos === 0 && importResumen.modificados === 0)}
+                  onClick={handleConfirmarImport}
+                  className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-black shadow-lg hover:bg-blue-700 flex items-center disabled:opacity-50"
+                >
+                  <Save className="w-5 h-5 mr-2" />
+                  Confirmar Importación ({importResumen.nuevos + importResumen.modificados})
+                </button>
+              </div>
+            )}
+
+            {importResult && (
+              <div className="px-6 py-4 bg-gray-50 border-t flex justify-end items-center gap-3 rounded-b-xl">
+                <button type="button" onClick={() => setIsImportModalOpen(false)} className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-black shadow-lg hover:bg-blue-700">
+                  Cerrar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Modales de Búsqueda Avanzada */}
-      <ClientSearchModal 
+      <ClientSearchModal
         isOpen={isClientModalOpen} 
         onClose={() => setIsClientModalOpen(false)}
         clientes={clientes}

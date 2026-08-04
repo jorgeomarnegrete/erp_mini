@@ -38,6 +38,9 @@ class RemitoCompraBase(BaseModel):
 class RemitoCompraCreate(RemitoCompraBase):
     detalles: List[RemitoCompraDetalleCreate]
 
+class RemitoCompraObservacionesUpdate(BaseModel):
+    observaciones: Optional[str] = None
+
 class RemitoCompraResponse(RemitoCompraBase):
     id: int
     fecha: datetime

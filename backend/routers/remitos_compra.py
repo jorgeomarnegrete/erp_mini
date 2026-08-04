@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
-from schemas.remito_compra import RemitoCompraCreate, RemitoCompraResponse
+from schemas.remito_compra import RemitoCompraCreate, RemitoCompraResponse, RemitoCompraObservacionesUpdate
 from crud import remito_compra as remito_comp_crud
 from routers.auth import get_current_user
 from models.user import User
@@ -45,6 +45,18 @@ def scan_item(
         return remito_comp_crud.procesar_escaneo_item(db, remito_id, producto_id, nro_lote, current_user.id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.patch("/{remito_id}/observaciones", response_model=RemitoCompraResponse)
+def update_observaciones(
+    remito_id: int,
+    payload: RemitoCompraObservacionesUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    db_remito = remito_comp_crud.update_observaciones(db, remito_id, payload.observaciones)
+    if db_remito is None:
+        raise HTTPException(status_code=404, detail="Remito de compra no encontrado")
+    return db_remito
 
 @router.get("/{remito_id}", response_model=RemitoCompraResponse)
 def read_remito(

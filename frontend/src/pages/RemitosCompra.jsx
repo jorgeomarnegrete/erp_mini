@@ -25,6 +25,7 @@ export default function RemitosCompra() {
   const [activeRowId, setActiveRowId] = useState(null);
   const quantityRefs = useRef({});
   const productRefs = useRef({});
+  const savedObsRef = useRef({});
 
   // Estado del Formulario Maestro
   const [head, setHead] = useState({
@@ -48,12 +49,30 @@ export default function RemitosCompra() {
         api.get('/api/productos')
       ]);
       setRemitos(resRem.data);
+      savedObsRef.current = Object.fromEntries(resRem.data.map(r => [r.id, r.observaciones || '']));
       setProveedores(resProv.data);
       setProductos(resProd.data.filter(p => p.activo));
     } catch (error) {
       console.error("Error al traer datos:", error);
     }
     setLoading(false);
+  };
+
+  const handleObservacionesChange = (id, value) => {
+    setRemitos(remitos.map(r => r.id === id ? { ...r, observaciones: value } : r));
+  };
+
+  const handleObservacionesBlur = async (remito) => {
+    const value = remito.observaciones || '';
+    if (value === (savedObsRef.current[remito.id] || '')) return;
+    try {
+      await api.patch(`/api/remitos-compra/${remito.id}/observaciones`, { observaciones: value });
+      savedObsRef.current[remito.id] = value;
+    } catch (error) {
+      console.error("Error al guardar observaciones:", error);
+      alert("No se pudo guardar la observación.");
+      setRemitos(remitos.map(r => r.id === remito.id ? { ...r, observaciones: savedObsRef.current[remito.id] || '' } : r));
+    }
   };
 
   useEffect(() => {
@@ -237,7 +256,7 @@ export default function RemitosCompra() {
               <th className="px-8 py-4">Fecha</th>
               <th className="px-8 py-4">Proveedor</th>
               <th className="px-8 py-4">Stock</th>
-              <th className="px-8 py-4 text-right">Total</th>
+              <th className="px-8 py-4">Observaciones</th>
               <th className="px-8 py-4 text-center">Acciones</th>
             </tr>
           </thead>
@@ -260,8 +279,15 @@ export default function RemitosCompra() {
                       {r.afecta_stock ? 'INGRESADO' : 'SOLO DOC.'}
                    </span>
                 </td>
-                <td className="px-8 py-4 whitespace-nowrap text-right text-base font-black text-blue-700">
-                  $ {r.total.toLocaleString(undefined, {minimumFractionDigits:2})}
+                <td className="px-8 py-4">
+                  <input
+                    type="text"
+                    className="w-full min-w-[220px] p-1.5 rounded border border-transparent hover:border-gray-300 focus:border-blue-500 outline-none text-sm font-medium text-gray-700 bg-transparent focus:bg-white"
+                    placeholder="Sin observaciones"
+                    value={r.observaciones || ''}
+                    onChange={e => handleObservacionesChange(r.id, e.target.value)}
+                    onBlur={() => handleObservacionesBlur(r)}
+                  />
                 </td>
                 <td className="px-8 py-4 whitespace-nowrap text-center">
                    <button 

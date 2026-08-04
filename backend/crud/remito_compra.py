@@ -124,3 +124,12 @@ def procesar_escaneo_item(db: Session, remito_id: int, producto_id: int, nro_lot
 
 def get_remito_compra(db: Session, remito_id: int):
     return db.query(RemitoCompra).filter(RemitoCompra.id == remito_id).first()
+
+def update_observaciones(db: Session, remito_id: int, observaciones: str):
+    db_remito = db.query(RemitoCompra).filter(RemitoCompra.id == remito_id).first()
+    if not db_remito:
+        return None
+    db_remito.observaciones = observaciones
+    db.commit()
+    db.refresh(db_remito)
+    return db_remito

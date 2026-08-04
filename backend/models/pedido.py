@@ -19,6 +19,7 @@ class Pedido(Base):
     
     estado = Column(String, default="Pendiente") # Borrador, Pendiente, Parcial, Completado, Cancelado
     observaciones = Column(Text, nullable=True)
+    origen_externo = Column(String, index=True, nullable=True)  # NRO_PEDIDO de la planilla importada, para detectar re-importaciones
     
     # Totales cabecera paramétricos
     subtotal = Column(Float, default=0.0)
