@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../App';
-import { Truck, Plus, Trash2, X, Save, Search, Package, Printer, ClipboardCheck } from 'lucide-react';
+import { Truck, Plus, Trash2, X, Save, Search, Package, Printer, ClipboardCheck, Filter, ChevronLeft, ChevronRight, XCircle } from 'lucide-react';
 import ProductSearchModal from '../components/ProductSearchModal';
 import SupplierSearchModal from '../components/SupplierSearchModal';
 
@@ -8,10 +8,21 @@ export default function RemitosCompra() {
   const { api } = useAuth();
   const [remitos, setRemitos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingRemitos, setLoadingRemitos] = useState(true);
 
   // Catálogos
   const [proveedores, setProveedores] = useState([]);
   const [productos, setProductos] = useState([]);
+
+  // Filtros y paginación del listado
+  const [filtroFechaDesde, setFiltroFechaDesde] = useState('');
+  const [filtroFechaHasta, setFiltroFechaHasta] = useState('');
+  const [filtroProveedor, setFiltroProveedor] = useState(null);
+  const [isFilterSupplierModalOpen, setIsFilterSupplierModalOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(50);
+  const [total, setTotal] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Estados Modal Crear
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,21 +52,36 @@ export default function RemitosCompra() {
     { temp_id: Date.now(), producto_id: '', cantidad: 1, precio_unitario: 0, subtotal: 0, nro_lote: '', fecha_vencimiento: '' }
   ]);
 
-  const fetchData = async () => {
+  const fetchCatalogos = async () => {
     try {
-      const [resRem, resProv, resProd] = await Promise.all([
-        api.get('/api/remitos-compra'),
+      const [resProv, resProd] = await Promise.all([
         api.get('/api/proveedores'),
         api.get('/api/productos')
       ]);
-      setRemitos(resRem.data);
-      savedObsRef.current = Object.fromEntries(resRem.data.map(r => [r.id, r.observaciones || '']));
       setProveedores(resProv.data);
       setProductos(resProd.data.filter(p => p.activo));
     } catch (error) {
       console.error("Error al traer datos:", error);
     }
     setLoading(false);
+  };
+
+  const fetchRemitos = async () => {
+    setLoadingRemitos(true);
+    try {
+      const params = { skip: (page - 1) * pageSize, limit: pageSize };
+      if (filtroFechaDesde) params.fecha_desde = filtroFechaDesde;
+      if (filtroFechaHasta) params.fecha_hasta = filtroFechaHasta;
+      if (filtroProveedor) params.proveedor_id = filtroProveedor.id;
+
+      const res = await api.get('/api/remitos-compra', { params });
+      setRemitos(res.data.items);
+      setTotal(res.data.total);
+      savedObsRef.current = Object.fromEntries(res.data.items.map(r => [r.id, r.observaciones || '']));
+    } catch (error) {
+      console.error("Error al traer remitos:", error);
+    }
+    setLoadingRemitos(false);
   };
 
   const handleObservacionesChange = (id, value) => {
@@ -76,8 +102,47 @@ export default function RemitosCompra() {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchCatalogos();
   }, [api]);
+
+  useEffect(() => {
+    fetchRemitos();
+  }, [api, page, filtroFechaDesde, filtroFechaHasta, filtroProveedor, refreshKey]);
+
+  const limpiarFiltros = () => {
+    setFiltroFechaDesde('');
+    setFiltroFechaHasta('');
+    setFiltroProveedor(null);
+    setPage(1);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const delta = 2;
+    for (let p = 1; p <= totalPages; p++) {
+      if (p === 1 || p === totalPages || (p >= page - delta && p <= page + delta)) {
+        pages.push(p);
+      } else if (pages[pages.length - 1] !== '...') {
+        pages.push('...');
+      }
+    }
+    return pages;
+  };
+
+  // Atajo F2 para el buscador de proveedor del filtro (fuera del modal de creación)
+  useEffect(() => {
+    const handleFilterKeyDown = (e) => {
+      if (isModalOpen) return;
+      if (e.key === 'F2' && document.activeElement.id === 'input-proveedor-filtro') {
+        e.preventDefault();
+        setIsFilterSupplierModalOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleFilterKeyDown);
+    return () => window.removeEventListener('keydown', handleFilterKeyDown);
+  }, [isModalOpen]);
 
   // Atajos de teclado
   useEffect(() => {
@@ -222,11 +287,39 @@ export default function RemitosCompra() {
 
       await api.post('/api/remitos-compra', payload);
       setIsModalOpen(false);
-      fetchData();
+      setPage(1);
+      setRefreshKey(k => k + 1);
     } catch (err) {
       setErrorMsg(err.response?.data?.detail || "Error al guardar remito de compra");
     }
     setIsSaving(false);
+  };
+
+  const handlePrint = async (remito_id) => {
+    try {
+      const response = await api.get(`/api/remitos-compra/${remito_id}/pdf`, { responseType: 'blob' });
+      const fileURL = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+
+      const pdfWindow = window.open("", "_blank");
+      if (pdfWindow) {
+         pdfWindow.document.write(`
+            <html>
+              <head>
+                <title>Visor PDF - Remito de Compra</title>
+                <style>body { margin: 0; padding: 0; overflow: hidden; background-color: #525659; }</style>
+              </head>
+              <body>
+                <iframe src="${fileURL}" width="100%" height="100%" style="border:none;"></iframe>
+              </body>
+            </html>
+         `);
+         pdfWindow.document.close();
+      } else {
+         alert("Por favor, permite las ventanas emergentes para ver el PDF.");
+      }
+    } catch (err) {
+      alert("No se pudo generar el PDF del remito de compra.");
+    }
   };
 
   if (loading) return <div className="p-8 text-center font-bold text-gray-500">Cargando...</div>;
@@ -248,6 +341,68 @@ export default function RemitosCompra() {
         </button>
       </div>
 
+      <div className="px-8 py-4 border-b border-gray-100 bg-gray-50/40 flex flex-wrap items-end gap-4">
+        <div className="flex items-center text-gray-400 mr-1 mb-2.5">
+          <Filter className="w-4 h-4" />
+        </div>
+        <div>
+          <label className="block text-[11px] font-bold text-gray-500 mb-1">Desde</label>
+          <input
+            type="date"
+            className="p-2 rounded-lg border border-gray-300 text-sm font-medium"
+            value={filtroFechaDesde}
+            onChange={e => { setFiltroFechaDesde(e.target.value); setPage(1); }}
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-bold text-gray-500 mb-1">Hasta</label>
+          <input
+            type="date"
+            className="p-2 rounded-lg border border-gray-300 text-sm font-medium"
+            value={filtroFechaHasta}
+            onChange={e => { setFiltroFechaHasta(e.target.value); setPage(1); }}
+          />
+        </div>
+        <div className="min-w-[220px]">
+          <label className="block text-[11px] font-bold text-gray-500 mb-1">Proveedor <span className="text-blue-500">(F2)</span></label>
+          <div className="relative">
+            <input
+              id="input-proveedor-filtro"
+              type="text"
+              readOnly
+              className="w-full p-2 pr-8 rounded-lg border border-gray-300 text-sm font-bold bg-white cursor-pointer focus:ring-2 focus:ring-blue-500 outline-none"
+              value={filtroProveedor?.razon_social || ''}
+              placeholder="Todos los proveedores..."
+              onClick={() => setIsFilterSupplierModalOpen(true)}
+            />
+            {filtroProveedor ? (
+              <button
+                type="button"
+                onClick={() => { setFiltroProveedor(null); setPage(1); }}
+                className="absolute right-2 top-2.5 text-gray-400 hover:text-red-500"
+                title="Quitar filtro de proveedor"
+              >
+                <XCircle className="w-4 h-4" />
+              </button>
+            ) : (
+              <Search className="absolute right-2.5 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
+            )}
+          </div>
+        </div>
+        {(filtroFechaDesde || filtroFechaHasta || filtroProveedor) && (
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            className="text-xs font-bold text-gray-500 hover:text-red-600 px-3 py-2.5"
+          >
+            Limpiar filtros
+          </button>
+        )}
+        <div className="ml-auto text-xs font-bold text-gray-400 pb-2.5">
+          {total} remito{total === 1 ? '' : 's'} encontrado{total === 1 ? '' : 's'}
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -261,7 +416,10 @@ export default function RemitosCompra() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {remitos.map((r) => (
+            {loadingRemitos && (
+              <tr><td colSpan="6" className="text-center p-8 font-bold text-gray-400">Cargando...</td></tr>
+            )}
+            {!loadingRemitos && remitos.map((r) => (
               <tr key={r.id} className="hover:bg-blue-50/30 transition-colors">
                 <td className="px-8 py-4 whitespace-nowrap">
                   <span className="font-mono font-bold text-gray-800 text-sm">
@@ -290,22 +448,60 @@ export default function RemitosCompra() {
                   />
                 </td>
                 <td className="px-8 py-4 whitespace-nowrap text-center">
-                   <button 
-                     disabled
-                     className="p-2 text-gray-300 cursor-not-allowed"
-                     title="Imprimir (En desarrollo)"
+                   <button
+                     onClick={() => handlePrint(r.id)}
+                     className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                     title="Imprimir Remito de Compra"
                    >
                       <Printer className="w-5 h-5" />
                    </button>
                 </td>
               </tr>
             ))}
-            {remitos.length === 0 && (
-              <tr><td colSpan="6" className="text-center p-8 font-bold text-gray-400">No hay remitos de compra registrados.</td></tr>
+            {!loadingRemitos && remitos.length === 0 && (
+              <tr><td colSpan="6" className="text-center p-8 font-bold text-gray-400">No hay remitos de compra que coincidan con los filtros.</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="px-8 py-4 flex items-center justify-between border-t border-gray-100">
+          <span className="text-xs font-bold text-gray-400">
+            Página {page} de {totalPages}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              className="p-2 rounded-lg border border-gray-200 text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {getPageNumbers().map((p, idx) => p === '...' ? (
+              <span key={`ellipsis-${idx}`} className="px-2 text-gray-400 text-sm font-bold">…</span>
+            ) : (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPage(p)}
+                className={`min-w-[2.25rem] h-9 px-2 rounded-lg text-sm font-bold transition-colors ${p === page ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              className="p-2 rounded-lg border border-gray-200 text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ============== MODAL CREACION ============== */}
       {isModalOpen && (
@@ -495,13 +691,24 @@ export default function RemitosCompra() {
       )}
 
       {/* Modales Auxiliares */}
-      <SupplierSearchModal 
-        isOpen={isSupplierModalOpen} 
+      <SupplierSearchModal
+        isOpen={isSupplierModalOpen}
         onClose={() => setIsSupplierModalOpen(false)}
         proveedores={proveedores}
         onSelect={(prov) => {
           setHead({ ...head, proveedor_id: prov.id });
           setIsSupplierModalOpen(false);
+        }}
+      />
+
+      <SupplierSearchModal
+        isOpen={isFilterSupplierModalOpen}
+        onClose={() => setIsFilterSupplierModalOpen(false)}
+        proveedores={proveedores}
+        onSelect={(prov) => {
+          setFiltroProveedor(prov);
+          setPage(1);
+          setIsFilterSupplierModalOpen(false);
         }}
       />
 

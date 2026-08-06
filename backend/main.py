@@ -410,6 +410,191 @@ async def lifespan(app: FastAPI):
 
     db.commit()
 
+    # 2b. Remito de Compra
+    p_remito_compra_exist = db.query(models.plantilla.PlantillaDocumento).filter(models.plantilla.PlantillaDocumento.tipo_documento == "REMITO_COMPRA").first()
+
+    html_remito_compra = """
+    <html>
+    <head>
+      <style>
+         body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; }
+         .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 20px; }
+         .logo { max-width: 150px; max-height: 80px; }
+         .empresa-datos { text-align: left; font-size: 11px; color: #555; margin-left: 20px; }
+         .title-box { text-align: right; }
+         .title-box h1 { margin: 0; color: #111; font-size: 24px; }
+         .proveedor-box { margin-top: 20px; padding: 15px; border: 1px solid #ddd; background: #fafafa; border-radius: 5px; }
+         table.items { width: 100%; border-collapse: collapse; margin-top: 30px; font-size: 11px; }
+         table.items th { background-color: #222; color: #fff; padding: 10px; text-align: left; }
+         table.items td { border-bottom: 1px solid #eee; padding: 10px; }
+         .totals { margin-top: 30px; width: 40%; float: right; border-top: 2px solid #333; padding-top: 10px; text-align: right; }
+         .totals div { margin-bottom: 5px; font-size: 13px; }
+         .totals .gran-total { font-size: 18px; font-weight: bold; color: #000; }
+      </style>
+    </head>
+    <body>
+       <div class="header">
+          <table style="width: 100%;"><tr>
+             <td style="width:50%; vertical-align: top;">
+                {% if empresa.logo_base64 %}
+                  <img class="logo" src="{{ empresa.logo_base64 }}" />
+                {% endif %}
+                <div class="empresa-datos">
+                   <strong>{{ empresa.razon_social }}</strong><br>
+                   CUIT: {{ empresa.cuit or '-' }}<br>
+                   Dir: {{ empresa.domicilio_comercial or '-' }}<br>
+                   Tel: {{ empresa.telefono or '-' }}<br>
+                </div>
+             </td>
+             <td style="width:50%; vertical-align: top;" class="title-box">
+                <h1>REMITO DE COMPRA</h1>
+                <strong>Nº {{ remito.numero_remito }}</strong><br>
+                Fecha: {{ remito.fecha.strftime('%d/%m/%Y') if remito.fecha else '' }}
+             </td>
+          </tr></table>
+       </div>
+
+       <div class="proveedor-box">
+          <strong>Proveedor: {{ proveedor.razon_social }}</strong><br>
+          Documento: {{ proveedor.documento }} ({{ proveedor.tipo_resp.nombre if proveedor.tipo_resp else '' }})<br>
+          Domicilio: {{ proveedor.direccion or '-' }}, {{ proveedor.localidad or '' }}
+       </div>
+
+       <table class="items">
+          <thead>
+             <tr>
+                <th style="width: 80px;">Cant.</th>
+                <th>Descripción</th>
+                <th style="text-align: right; width: 100px;">Unitario</th>
+                <th style="text-align: right; width: 100px;">Subtotal</th>
+             </tr>
+          </thead>
+          <tbody>
+             {% for det in detalles %}
+             <tr>
+                <td>{{ "%.2f"|format(det.cantidad) }}</td>
+                <td>{{ det.producto.nombre }}</td>
+                <td style="text-align: right;">$ {{ "%.2f"|format(det.precio_unitario) }}</td>
+                <td style="text-align: right;">$ {{ "%.2f"|format(det.subtotal) }}</td>
+             </tr>
+             {% endfor %}
+          </tbody>
+       </table>
+
+       <div class="totals">
+          <div class="gran-total">Total: $ {{ "%.2f"|format(remito.total) }}</div>
+       </div>
+       <div style="clear: both;"></div>
+
+       <div style="margin-top: 50px; font-size: 10px; color: #777; text-align: center;">
+          {{ remito.observaciones if remito.observaciones else '' }}<br><br>
+          Documento no válido como factura.<br>
+          <i>Generado por Factu ERP Avanzado v2.0</i>
+       </div>
+    </body>
+    </html>
+    """
+
+    if not p_remito_compra_exist:
+        p_remito_compra = models.plantilla.PlantillaDocumento(nombre="Remito de Compra Estándar", tipo_documento="REMITO_COMPRA", codigo_html=html_remito_compra, activa=True)
+        db.add(p_remito_compra)
+    else:
+        # Forzar actualización de la plantilla si ya existe pero está rota
+        p_remito_compra_exist.codigo_html = html_remito_compra
+
+    db.commit()
+
+    # 2c. Reporte de Ajustes de Stock
+    p_reporte_stock_exist = db.query(models.plantilla.PlantillaDocumento).filter(models.plantilla.PlantillaDocumento.tipo_documento == "REPORTE_AJUSTE_STOCK").first()
+
+    html_reporte_stock = """
+    <html>
+    <head>
+      <style>
+         body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; }
+         .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 20px; }
+         .logo { max-width: 150px; max-height: 80px; }
+         .empresa-datos { text-align: left; font-size: 11px; color: #555; margin-left: 20px; }
+         .title-box { text-align: right; }
+         .title-box h1 { margin: 0; color: #111; font-size: 22px; }
+         .filtros-box { margin-top: 20px; padding: 12px 15px; border: 1px solid #ddd; background: #fafafa; border-radius: 5px; font-size: 11px; }
+         .filtros-box span { margin-right: 25px; }
+         table.items { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 10px; }
+         table.items th { background-color: #222; color: #fff; padding: 8px; text-align: left; }
+         table.items td { border-bottom: 1px solid #eee; padding: 8px; }
+         .tipo-entrada { color: #15803d; font-weight: bold; }
+         .tipo-salida { color: #b91c1c; font-weight: bold; }
+         .footer-total { margin-top: 15px; text-align: right; font-size: 12px; font-weight: bold; }
+      </style>
+    </head>
+    <body>
+       <div class="header">
+          <table style="width: 100%;"><tr>
+             <td style="width:50%; vertical-align: top;">
+                {% if empresa.logo_base64 %}
+                  <img class="logo" src="{{ empresa.logo_base64 }}" />
+                {% endif %}
+                <div class="empresa-datos">
+                   <strong>{{ empresa.razon_social }}</strong><br>
+                   CUIT: {{ empresa.cuit or '-' }}<br>
+                   Dir: {{ empresa.domicilio_comercial or '-' }}<br>
+                </div>
+             </td>
+             <td style="width:50%; vertical-align: top;" class="title-box">
+                <h1>REPORTE DE AJUSTES DE STOCK</h1>
+                Generado: {{ fecha_generacion.strftime('%d/%m/%Y %H:%M') if fecha_generacion else '' }}
+             </td>
+          </tr></table>
+       </div>
+
+       <div class="filtros-box">
+          <span><strong>Tipo:</strong> {{ filtros.tipo_label }}</span>
+          <span><strong>Desde:</strong> {{ filtros.fecha_desde.strftime('%d/%m/%Y') if filtros.fecha_desde else '-' }}</span>
+          <span><strong>Hasta:</strong> {{ filtros.fecha_hasta.strftime('%d/%m/%Y') if filtros.fecha_hasta else '-' }}</span>
+          <span><strong>Producto:</strong> {{ filtros.producto_label }}</span>
+       </div>
+
+       <table class="items">
+          <thead>
+             <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Código</th>
+                <th>Descripción</th>
+                <th>Motivo</th>
+                <th style="text-align: right;">Cantidad</th>
+                <th>Usuario</th>
+             </tr>
+          </thead>
+          <tbody>
+             {% for mov in movimientos %}
+             <tr>
+                <td>{{ mov.fecha_hora.strftime('%d/%m/%Y %H:%M') if mov.fecha_hora else '' }}</td>
+                <td class="{{ 'tipo-entrada' if mov.tipo == 1 else 'tipo-salida' }}">{{ 'Entrada' if mov.tipo == 1 else 'Salida' }}</td>
+                <td>{{ mov.producto.codigo_interno if mov.producto else '' }}</td>
+                <td>{{ mov.producto.nombre if mov.producto else '' }}</td>
+                <td>{{ mov.motivo }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(mov.cantidad) }}</td>
+                <td>{{ (mov.usuario.nombre or mov.usuario.email) if mov.usuario else '' }}</td>
+             </tr>
+             {% endfor %}
+          </tbody>
+       </table>
+
+       <div class="footer-total">Total de movimientos: {{ total }}</div>
+    </body>
+    </html>
+    """
+
+    if not p_reporte_stock_exist:
+        p_reporte_stock = models.plantilla.PlantillaDocumento(nombre="Reporte de Ajustes de Stock", tipo_documento="REPORTE_AJUSTE_STOCK", codigo_html=html_reporte_stock, activa=True)
+        db.add(p_reporte_stock)
+    else:
+        # Forzar actualización de la plantilla si ya existe pero está rota
+        p_reporte_stock_exist.codigo_html = html_reporte_stock
+
+    db.commit()
+
     # 3. Orden de Producción (Parte de Trabajo) — SOLO crear si no existe (respeta ediciones del admin)
     p_op_exist = db.query(models.plantilla.PlantillaDocumento).filter(models.plantilla.PlantillaDocumento.tipo_documento == "ORDEN_PRODUCCION").first()
     if not p_op_exist:

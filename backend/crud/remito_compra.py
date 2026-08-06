@@ -1,7 +1,10 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from models.remito_compra import RemitoCompra, RemitoCompraDetalle
 from models.producto import Producto, ProductoLoteStock
 from schemas.remito_compra import RemitoCompraCreate
+from typing import Optional
+from datetime import date
 
 def create_remito_compra(db: Session, remito_in: RemitoCompraCreate, user_id: int):
     # 1. Generar Cabecera
@@ -59,8 +62,26 @@ def create_remito_compra(db: Session, remito_in: RemitoCompraCreate, user_id: in
     
     return db_remito
 
-def get_remitos_compra(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(RemitoCompra).order_by(RemitoCompra.id.desc()).offset(skip).limit(limit).all()
+def get_remitos_compra(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    proveedor_id: Optional[int] = None,
+):
+    query = db.query(RemitoCompra)
+
+    if fecha_desde:
+        query = query.filter(func.date(RemitoCompra.fecha) >= fecha_desde)
+    if fecha_hasta:
+        query = query.filter(func.date(RemitoCompra.fecha) <= fecha_hasta)
+    if proveedor_id:
+        query = query.filter(RemitoCompra.proveedor_id == proveedor_id)
+
+    total = query.count()
+    items = query.order_by(RemitoCompra.fecha.desc(), RemitoCompra.id.desc()).offset(skip).limit(limit).all()
+    return items, total
 
 def get_remitos_pendientes_control(db: Session):
     """Obtiene remitos que tienen artículos con saldo pendiente de escaneo"""

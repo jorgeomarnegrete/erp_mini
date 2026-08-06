@@ -8,7 +8,8 @@ from models.producto import Producto, ProductoLoteStock
 from models.stk_mov import StkMov
 from models.cliente import Cliente
 from schemas.remito import RemitoCreate
-from typing import List
+from typing import List, Optional
+from datetime import date
 
 def create_remito(db: Session, remito_in: RemitoCreate, user_id: int):
     # 1. Recuperar Punto De Venta para auto-numeración
@@ -99,8 +100,26 @@ def create_remito(db: Session, remito_in: RemitoCreate, user_id: int):
     
     return db_remito
 
-def get_remitos(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Remito).order_by(Remito.id.desc()).offset(skip).limit(limit).all()
+def get_remitos(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    cliente_id: Optional[int] = None,
+):
+    query = db.query(Remito)
+
+    if fecha_desde:
+        query = query.filter(func.date(Remito.fecha) >= fecha_desde)
+    if fecha_hasta:
+        query = query.filter(func.date(Remito.fecha) <= fecha_hasta)
+    if cliente_id:
+        query = query.filter(Remito.cliente_id == cliente_id)
+
+    total = query.count()
+    items = query.order_by(Remito.fecha.desc(), Remito.id.desc()).offset(skip).limit(limit).all()
+    return items, total
 
 def get_remito(db: Session, remito_id: int):
     return db.query(Remito).filter(Remito.id == remito_id).first()

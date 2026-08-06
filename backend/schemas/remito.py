@@ -56,3 +56,7 @@ class RemitoResponse(RemitoBase):
 class RemitoBulkAssign(BaseModel):
     remito_ids: List[int]
     transporte_id: int
+
+class RemitoListResponse(BaseModel):
+    items: List[RemitoResponse]
+    total: int

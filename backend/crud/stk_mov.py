@@ -1,8 +1,11 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from fastapi import HTTPException
 from models.stk_mov import StkMov
 from models.producto import Producto, ProductoLoteStock
 from schemas.stk_mov import StkMovCreate
+from typing import Optional
+from datetime import date
 
 def create_movimientos(db: Session, mov_data: StkMovCreate, user_id: int):
     created_movs = []
@@ -64,3 +67,43 @@ def create_movimientos(db: Session, mov_data: StkMovCreate, user_id: int):
 
 def get_all(db: Session):
     return db.query(StkMov).order_by(StkMov.fecha_hora.desc()).all()
+
+def get_movimientos_filtrados(
+    db: Session,
+    tipo: Optional[int] = None,
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    producto_id: Optional[int] = None,
+    skip: Optional[int] = None,
+    limit: Optional[int] = None,
+):
+    query = db.query(StkMov)
+
+    if tipo:
+        query = query.filter(StkMov.tipo == tipo)
+    if fecha_desde:
+        query = query.filter(func.date(StkMov.fecha_hora) >= fecha_desde)
+    if fecha_hasta:
+        query = query.filter(func.date(StkMov.fecha_hora) <= fecha_hasta)
+    if producto_id:
+        query = query.filter(StkMov.id_producto == producto_id)
+
+    total = query.count()
+    query = query.order_by(StkMov.fecha_hora.desc())
+    if skip is not None and limit is not None:
+        query = query.offset(skip).limit(limit)
+
+    return query.all(), total
+
+def serializar_reporte_item(mov: StkMov):
+    return {
+        "id_mov": mov.id_mov,
+        "fecha_hora": mov.fecha_hora,
+        "tipo": mov.tipo,
+        "motivo": mov.motivo,
+        "cantidad": mov.cantidad,
+        "nro_lote": mov.nro_lote,
+        "producto_codigo": mov.producto.codigo_interno if mov.producto else "",
+        "producto_nombre": mov.producto.nombre if mov.producto else "",
+        "usuario_nombre": (mov.usuario.nombre or mov.usuario.email) if mov.usuario else "",
+    }

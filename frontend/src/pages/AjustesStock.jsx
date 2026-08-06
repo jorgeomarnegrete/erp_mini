@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../App';
-import { PackageOpen, Plus, Trash2, Save, Search, Database } from 'lucide-react';
+import { PackageOpen, Plus, Trash2, Save, Search, Database, FileBarChart, X, XCircle, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 import ProductSearchModal from '../components/ProductSearchModal';
 import BatchSearchModal from '../components/BatchSearchModal';
 
@@ -27,6 +27,21 @@ export default function AjustesStock() {
 
   // Referencias para manejar el foco dinámico
   const quantityRefs = useRef({});
+
+  // ===== Reporte de Movimientos =====
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isReportProductModalOpen, setIsReportProductModalOpen] = useState(false);
+  const [repTipo, setRepTipo] = useState('');
+  const [repFechaDesde, setRepFechaDesde] = useState('');
+  const [repFechaHasta, setRepFechaHasta] = useState('');
+  const [repProducto, setRepProducto] = useState(null);
+  const [repPage, setRepPage] = useState(1);
+  const [repPageSize] = useState(50);
+  const [repTotal, setRepTotal] = useState(0);
+  const [repItems, setRepItems] = useState([]);
+  const [repLoading, setRepLoading] = useState(false);
+  const [repError, setRepError] = useState('');
+  const [isPrintingReport, setIsPrintingReport] = useState(false);
 
   useEffect(() => {
     const fetchProductos = async () => {
@@ -59,7 +74,7 @@ export default function AjustesStock() {
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
       // Si algún modal está abierto, ignorar
-      if (isModalOpen || isBatchModalOpen) return;
+      if (isModalOpen || isBatchModalOpen || isReportModalOpen || isReportProductModalOpen) return;
 
       if (e.key === 'Insert') {
         e.preventDefault();
@@ -84,7 +99,102 @@ export default function AjustesStock() {
 
     document.addEventListener('keydown', handleGlobalKeyDown);
     return () => document.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [addRow, isModalOpen, isBatchModalOpen, detalles]);
+  }, [addRow, isModalOpen, isBatchModalOpen, isReportModalOpen, isReportProductModalOpen, detalles]);
+
+  // F2 para el buscador de producto del filtro del reporte
+  useEffect(() => {
+    const handleReportKeyDown = (e) => {
+      if (!isReportModalOpen || isReportProductModalOpen) return;
+      if (e.key === 'F2' && document.activeElement.id === 'input-producto-filtro-reporte') {
+        e.preventDefault();
+        setIsReportProductModalOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleReportKeyDown);
+    return () => window.removeEventListener('keydown', handleReportKeyDown);
+  }, [isReportModalOpen, isReportProductModalOpen]);
+
+  const fetchReporte = async () => {
+    setRepLoading(true);
+    setRepError('');
+    try {
+      const params = { skip: (repPage - 1) * repPageSize, limit: repPageSize };
+      if (repTipo) params.tipo = repTipo;
+      if (repFechaDesde) params.fecha_desde = repFechaDesde;
+      if (repFechaHasta) params.fecha_hasta = repFechaHasta;
+      if (repProducto) params.producto_id = repProducto.id;
+
+      const res = await api.get('/api/stk-mov', { params });
+      setRepItems(res.data.items);
+      setRepTotal(res.data.total);
+    } catch (err) {
+      setRepError('Error al traer el reporte.');
+    }
+    setRepLoading(false);
+  };
+
+  useEffect(() => {
+    if (!isReportModalOpen) return;
+    fetchReporte();
+  }, [isReportModalOpen, repPage, repTipo, repFechaDesde, repFechaHasta, repProducto]);
+
+  const limpiarFiltrosReporte = () => {
+    setRepTipo('');
+    setRepFechaDesde('');
+    setRepFechaHasta('');
+    setRepProducto(null);
+    setRepPage(1);
+  };
+
+  const repTotalPages = Math.max(1, Math.ceil(repTotal / repPageSize));
+
+  const getRepPageNumbers = () => {
+    const pages = [];
+    const delta = 2;
+    for (let p = 1; p <= repTotalPages; p++) {
+      if (p === 1 || p === repTotalPages || (p >= repPage - delta && p <= repPage + delta)) {
+        pages.push(p);
+      } else if (pages[pages.length - 1] !== '...') {
+        pages.push('...');
+      }
+    }
+    return pages;
+  };
+
+  const handlePrintReporte = async () => {
+    setIsPrintingReport(true);
+    try {
+      const params = {};
+      if (repTipo) params.tipo = repTipo;
+      if (repFechaDesde) params.fecha_desde = repFechaDesde;
+      if (repFechaHasta) params.fecha_hasta = repFechaHasta;
+      if (repProducto) params.producto_id = repProducto.id;
+
+      const response = await api.get('/api/stk-mov/reporte/pdf', { params, responseType: 'blob' });
+      const fileURL = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+
+      const pdfWindow = window.open("", "_blank");
+      if (pdfWindow) {
+         pdfWindow.document.write(`
+            <html>
+              <head>
+                <title>Visor PDF - Reporte de Ajustes de Stock</title>
+                <style>body { margin: 0; padding: 0; overflow: hidden; background-color: #525659; }</style>
+              </head>
+              <body>
+                <iframe src="${fileURL}" width="100%" height="100%" style="border:none;"></iframe>
+              </body>
+            </html>
+         `);
+         pdfWindow.document.close();
+      } else {
+         alert("Por favor, permite las ventanas emergentes para ver el PDF.");
+      }
+    } catch (err) {
+      alert("No se pudo generar el PDF del reporte.");
+    }
+    setIsPrintingReport(false);
+  };
 
   const handleProductSelect = (producto) => {
     if (activeRowId) {
@@ -207,6 +317,12 @@ export default function AjustesStock() {
             <p className="text-xs text-teal-600 font-bold tracking-wide uppercase mt-1">Movimientos Manuales (+ / -)</p>
           </div>
         </div>
+        <button
+          onClick={() => { setRepPage(1); setIsReportModalOpen(true); }}
+          className="bg-white text-teal-700 border border-teal-300 hover:bg-teal-50 px-5 py-2.5 rounded-xl font-bold shadow-sm flex items-center transition-all"
+        >
+          <FileBarChart className="w-5 h-5 mr-2" /> Reporte
+        </button>
       </div>
 
       <div className="p-8">
@@ -381,6 +497,206 @@ export default function AjustesStock() {
         onClose={() => setIsBatchModalOpen(false)}
         producto={selectedProductForBatch}
         onSelect={handleBatchSelect}
+      />
+
+      {/* ============== MODAL REPORTE ============== */}
+      {isReportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 bg-gray-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl flex flex-col max-h-[95vh] mt-4 mb-4 border-t-8 border-teal-600">
+            <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50/50 rounded-t-xl">
+              <h3 className="text-xl font-black text-gray-800 flex items-center">
+                <FileBarChart className="w-6 h-6 mr-3 text-teal-600" />
+                Reporte de Movimientos de Stock
+              </h3>
+              <button type="button" onClick={() => setIsReportModalOpen(false)} className="text-gray-400 hover:text-red-500">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {repError && (
+                <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-700 font-bold border border-red-200 text-sm">
+                  ⚠️ {repError}
+                </div>
+              )}
+
+              {/* Filtros */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100 items-end">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1">Tipo</label>
+                  <select
+                    className="w-full p-2.5 rounded-lg border border-gray-300 font-bold bg-white"
+                    value={repTipo}
+                    onChange={e => { setRepTipo(e.target.value); setRepPage(1); }}
+                  >
+                    <option value="">Todos</option>
+                    <option value="1">Entrada</option>
+                    <option value="2">Salida</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1">Desde</label>
+                  <input
+                    type="date"
+                    className="w-full p-2.5 rounded-lg border border-gray-300 text-sm font-medium"
+                    value={repFechaDesde}
+                    onChange={e => { setRepFechaDesde(e.target.value); setRepPage(1); }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1">Hasta</label>
+                  <input
+                    type="date"
+                    className="w-full p-2.5 rounded-lg border border-gray-300 text-sm font-medium"
+                    value={repFechaHasta}
+                    onChange={e => { setRepFechaHasta(e.target.value); setRepPage(1); }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1">Producto <span className="text-teal-500">(F2)</span></label>
+                  <div className="relative">
+                    <input
+                      id="input-producto-filtro-reporte"
+                      type="text"
+                      readOnly
+                      className="w-full p-2.5 pr-8 rounded-lg border border-gray-300 text-sm font-bold bg-white cursor-pointer focus:ring-2 focus:ring-teal-500 outline-none"
+                      value={repProducto?.nombre || ''}
+                      placeholder="Todos los productos..."
+                      onClick={() => setIsReportProductModalOpen(true)}
+                    />
+                    {repProducto ? (
+                      <button
+                        type="button"
+                        onClick={() => { setRepProducto(null); setRepPage(1); }}
+                        className="absolute right-2 top-3 text-gray-400 hover:text-red-500"
+                        title="Quitar filtro de producto"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <Search className="absolute right-2.5 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-4">
+                  {(repTipo || repFechaDesde || repFechaHasta || repProducto) && (
+                    <button type="button" onClick={limpiarFiltrosReporte} className="text-xs font-bold text-gray-500 hover:text-red-600">
+                      Limpiar filtros
+                    </button>
+                  )}
+                  <span className="text-xs font-bold text-gray-400">
+                    {repTotal} movimiento{repTotal === 1 ? '' : 's'} encontrado{repTotal === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  disabled={isPrintingReport || repTotal === 0}
+                  onClick={handlePrintReporte}
+                  className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl font-bold shadow-sm flex items-center transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isPrintingReport ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <Printer className="w-4 h-4 mr-2" />
+                  )}
+                  Imprimir PDF
+                </button>
+              </div>
+
+              {/* Tabla resultados */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-slate-100 text-slate-800 text-xs font-black uppercase">
+                    <tr>
+                      <th className="p-3 border-b">Fecha</th>
+                      <th className="p-3 border-b">Tipo</th>
+                      <th className="p-3 border-b">Código</th>
+                      <th className="p-3 border-b">Descripción</th>
+                      <th className="p-3 border-b">Motivo</th>
+                      <th className="p-3 border-b text-right">Cantidad</th>
+                      <th className="p-3 border-b">Usuario</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {repLoading && (
+                      <tr><td colSpan="7" className="text-center p-8 font-bold text-gray-400">Cargando...</td></tr>
+                    )}
+                    {!repLoading && repItems.map(m => (
+                      <tr key={m.id_mov} className="hover:bg-teal-50/30 transition-colors">
+                        <td className="p-3 whitespace-nowrap text-sm text-gray-600 font-medium">
+                          {new Date(m.fecha_hora).toLocaleString()}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.tipo === 1 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {m.tipo === 1 ? 'ENTRADA' : 'SALIDA'}
+                          </span>
+                        </td>
+                        <td className="p-3 whitespace-nowrap font-mono text-sm font-bold text-gray-700">{m.producto_codigo}</td>
+                        <td className="p-3 text-sm font-bold text-gray-700">{m.producto_nombre}</td>
+                        <td className="p-3 text-sm text-gray-600">{m.motivo}</td>
+                        <td className="p-3 whitespace-nowrap text-right font-black text-sm text-gray-800">{m.cantidad.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td className="p-3 whitespace-nowrap text-sm text-gray-600">{m.usuario_nombre}</td>
+                      </tr>
+                    ))}
+                    {!repLoading && repItems.length === 0 && (
+                      <tr><td colSpan="7" className="text-center p-8 font-bold text-gray-400">No hay movimientos que coincidan con los filtros.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {repTotalPages > 1 && (
+                <div className="pt-4 flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-400">Página {repPage} de {repTotalPages}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      disabled={repPage <= 1}
+                      onClick={() => setRepPage(p => Math.max(1, p - 1))}
+                      className="p-2 rounded-lg border border-gray-200 text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    {getRepPageNumbers().map((p, idx) => p === '...' ? (
+                      <span key={`ellipsis-${idx}`} className="px-2 text-gray-400 text-sm font-bold">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setRepPage(p)}
+                        className={`min-w-[2.25rem] h-9 px-2 rounded-lg text-sm font-bold transition-colors ${p === repPage ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      disabled={repPage >= repTotalPages}
+                      onClick={() => setRepPage(p => Math.min(repTotalPages, p + 1))}
+                      className="p-2 rounded-lg border border-gray-200 text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ProductSearchModal
+        isOpen={isReportProductModalOpen}
+        onClose={() => setIsReportProductModalOpen(false)}
+        productos={productos}
+        onSelect={(producto) => {
+          setRepProducto(producto);
+          setRepPage(1);
+          setIsReportProductModalOpen(false);
+        }}
       />
     </div>
   );

@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+from datetime import date
 
 from database import get_db
 from models.user import User
-from schemas.remito import RemitoCreate, RemitoResponse, RemitoBulkAssign
+from schemas.remito import RemitoCreate, RemitoResponse, RemitoBulkAssign, RemitoListResponse
 from schemas.pedido import PedidoResponse
 from crud import remito as crud_remito
 from crud.empresa import get_empresa
@@ -14,10 +15,22 @@ from core.pdf_generator import generar_pdf_desde_html
 
 router = APIRouter(prefix="/api/remitos", tags=["remitos"])
 
-@router.get("", response_model=List[RemitoResponse])
-async def read_remitos(skip: int = 0, limit: int = 100, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Obtiene el historial de remitos"""
-    return crud_remito.get_remitos(db, skip=skip, limit=limit)
+@router.get("", response_model=RemitoListResponse)
+async def read_remitos(
+    skip: int = 0,
+    limit: int = 50,
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    cliente_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Obtiene el historial de remitos, paginado y filtrable por fecha/cliente"""
+    items, total = crud_remito.get_remitos(
+        db, skip=skip, limit=limit,
+        fecha_desde=fecha_desde, fecha_hasta=fecha_hasta, cliente_id=cliente_id,
+    )
+    return {"items": items, "total": total}
 
 @router.get("/pendientes", response_model=List[PedidoResponse])
 async def read_pedidos_pendientes_todos(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

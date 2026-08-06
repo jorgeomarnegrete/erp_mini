@@ -45,9 +45,13 @@ class RemitoCompraResponse(RemitoCompraBase):
     id: int
     fecha: datetime
     usuario_id: int
-    
+
     proveedor: Optional[ProveedorResponse] = None
     detalles: List[RemitoCompraDetalleResponse]
 
     class Config:
         from_attributes = True
+
+class RemitoCompraListResponse(BaseModel):
+    items: List[RemitoCompraResponse]
+    total: int
