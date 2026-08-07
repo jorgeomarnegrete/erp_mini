@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../App';
-import { Truck, Plus, Trash2, X, Save, Search, Package, Printer, ClipboardCheck, Filter, ChevronLeft, ChevronRight, XCircle } from 'lucide-react';
+import { Truck, Plus, Trash2, X, Save, Search, Package, Printer, ClipboardCheck, Filter, ChevronLeft, ChevronRight, XCircle, Pencil } from 'lucide-react';
 import ProductSearchModal from '../components/ProductSearchModal';
 import SupplierSearchModal from '../components/SupplierSearchModal';
 
@@ -32,11 +32,18 @@ export default function RemitosCompra() {
   // Estados para Búsqueda Avanzada
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  
+
   const [activeRowId, setActiveRowId] = useState(null);
   const quantityRefs = useRef({});
   const productRefs = useRef({});
   const savedObsRef = useRef({});
+
+  // Estados Modal Editar Encabezado
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEditSupplierModalOpen, setIsEditSupplierModalOpen] = useState(false);
+  const [editRemito, setEditRemito] = useState(null);
+  const [isEditSaving, setIsEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
 
   // Estado del Formulario Maestro
   const [head, setHead] = useState({
@@ -143,6 +150,19 @@ export default function RemitosCompra() {
     window.addEventListener('keydown', handleFilterKeyDown);
     return () => window.removeEventListener('keydown', handleFilterKeyDown);
   }, [isModalOpen]);
+
+  // Atajo F2 para el buscador de proveedor del modal de edición de encabezado
+  useEffect(() => {
+    const handleEditKeyDown = (e) => {
+      if (!isEditModalOpen || isEditSupplierModalOpen) return;
+      if (e.key === 'F2' && document.activeElement.id === 'input-proveedor-editar') {
+        e.preventDefault();
+        setIsEditSupplierModalOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleEditKeyDown);
+    return () => window.removeEventListener('keydown', handleEditKeyDown);
+  }, [isEditModalOpen, isEditSupplierModalOpen]);
 
   // Atajos de teclado
   useEffect(() => {
@@ -322,6 +342,46 @@ export default function RemitosCompra() {
     }
   };
 
+  const openEditModal = (remito) => {
+    setEditRemito({
+      id: remito.id,
+      proveedor_id: remito.proveedor_id,
+      proveedor: remito.proveedor,
+      numero_remito: remito.numero_remito,
+      fecha: new Date(remito.fecha).toISOString().slice(0, 10),
+      observaciones: remito.observaciones || '',
+    });
+    setEditError('');
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    setEditError('');
+
+    if (!editRemito.proveedor_id || !editRemito.numero_remito) {
+      setEditError("Debes seleccionar Proveedor e ingresar el Número de Remito.");
+      return;
+    }
+
+    setIsEditSaving(true);
+    try {
+      const payload = {
+        proveedor_id: editRemito.proveedor_id,
+        numero_remito: editRemito.numero_remito,
+        fecha: editRemito.fecha,
+        observaciones: editRemito.observaciones,
+      };
+      const res = await api.patch(`/api/remitos-compra/${editRemito.id}/encabezado`, payload);
+      setRemitos(remitos.map(r => r.id === editRemito.id ? res.data : r));
+      savedObsRef.current[editRemito.id] = res.data.observaciones || '';
+      setIsEditModalOpen(false);
+    } catch (err) {
+      setEditError(err.response?.data?.detail || "Error al guardar los cambios.");
+    }
+    setIsEditSaving(false);
+  };
+
   if (loading) return <div className="p-8 text-center font-bold text-gray-500">Cargando...</div>;
 
   return (
@@ -448,6 +508,13 @@ export default function RemitosCompra() {
                   />
                 </td>
                 <td className="px-8 py-4 whitespace-nowrap text-center">
+                   <button
+                     onClick={() => openEditModal(r)}
+                     className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                     title="Editar Encabezado"
+                   >
+                      <Pencil className="w-5 h-5" />
+                   </button>
                    <button
                      onClick={() => handlePrint(r.id)}
                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
@@ -719,6 +786,109 @@ export default function RemitosCompra() {
         onSelect={(producto) => {
           updateDetalle(activeRowId, 'producto_id', producto);
           setIsProductModalOpen(false);
+        }}
+      />
+
+      {/* ============== MODAL EDITAR ENCABEZADO ============== */}
+      {isEditModalOpen && editRemito && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 bg-gray-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col mt-4 mb-4 border-t-8 border-blue-600">
+            <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50/50 rounded-t-xl">
+              <h3 className="text-xl font-black text-gray-800 flex items-center">
+                <Pencil className="w-5 h-5 mr-3 text-blue-600" />
+                Editar Encabezado
+              </h3>
+              <button type="button" disabled={isEditSaving} onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-red-500">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {editError && (
+                <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-700 font-bold border border-red-200 text-sm">
+                  ⚠️ {editError}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Proveedor * <span className="text-[10px] text-blue-500">(F2 p/ buscar)</span></label>
+                  <div className="relative">
+                    <input
+                      id="input-proveedor-editar"
+                      type="text"
+                      readOnly
+                      className="w-full p-2.5 rounded-lg border border-gray-300 font-bold bg-white cursor-pointer focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={proveedores.find(p => p.id === editRemito.proveedor_id)?.razon_social || editRemito.proveedor?.razon_social || ''}
+                      placeholder="F2 para buscar proveedor..."
+                      onClick={() => setIsEditSupplierModalOpen(true)}
+                    />
+                    <Search className="absolute right-3 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Nº Remito (Proveedor) *</label>
+                    <input
+                      type="text"
+                      className="w-full p-2.5 rounded-lg border border-gray-300 font-bold focus:ring-2 focus:ring-blue-500 outline-none uppercase"
+                      value={editRemito.numero_remito}
+                      onChange={e => setEditRemito({ ...editRemito, numero_remito: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Fecha *</label>
+                    <input
+                      type="date"
+                      className="w-full p-2.5 rounded-lg border border-gray-300 font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={editRemito.fecha}
+                      onChange={e => setEditRemito({ ...editRemito, fecha: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Observaciones / Notas Internas</label>
+                  <textarea
+                    rows="3"
+                    className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-blue-500 text-sm font-medium"
+                    value={editRemito.observaciones}
+                    onChange={e => setEditRemito({ ...editRemito, observaciones: e.target.value })}
+                  ></textarea>
+                </div>
+
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-500 flex items-center">
+                  <Package className="w-4 h-4 mr-2 text-gray-400" />
+                  Procesar Stock:
+                  <span className={`ml-1 px-2 py-0.5 rounded text-[10px] ${remitos.find(r => r.id === editRemito.id)?.afecta_stock ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
+                    {remitos.find(r => r.id === editRemito.id)?.afecta_stock ? 'INGRESADO' : 'SOLO DOC.'}
+                  </span>
+                  <span className="ml-2 text-gray-400 font-medium normal-case">(no editable acá — no afecta el stock ya cargado)</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 border-t flex justify-end items-center gap-3 rounded-b-xl">
+              <button type="button" disabled={isEditSaving} onClick={() => setIsEditModalOpen(false)} className="px-6 py-2.5 text-gray-700 bg-white border shadow-sm rounded-xl font-bold hover:bg-gray-100">
+                Cancelar
+              </button>
+              <button type="submit" disabled={isEditSaving} onClick={handleSaveEdit} className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-black shadow-lg hover:bg-blue-700 flex items-center">
+                {isEditSaving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div> : <Save className="w-5 h-5 mr-2" />}
+                Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <SupplierSearchModal
+        isOpen={isEditSupplierModalOpen}
+        onClose={() => setIsEditSupplierModalOpen(false)}
+        proveedores={proveedores}
+        onSelect={(prov) => {
+          setEditRemito({ ...editRemito, proveedor_id: prov.id, proveedor: prov });
+          setIsEditSupplierModalOpen(false);
         }}
       />
     </div>

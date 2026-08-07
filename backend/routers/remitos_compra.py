@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
 from database import get_db
-from schemas.remito_compra import RemitoCompraCreate, RemitoCompraResponse, RemitoCompraObservacionesUpdate, RemitoCompraListResponse
+from schemas.remito_compra import RemitoCompraCreate, RemitoCompraResponse, RemitoCompraObservacionesUpdate, RemitoCompraEncabezadoUpdate, RemitoCompraListResponse
 from crud import remito_compra as remito_comp_crud
 from crud.empresa import get_empresa
 from routers.auth import get_current_user
@@ -65,6 +65,24 @@ def update_observaciones(
     current_user: User = Depends(get_current_user)
 ):
     db_remito = remito_comp_crud.update_observaciones(db, remito_id, payload.observaciones)
+    if db_remito is None:
+        raise HTTPException(status_code=404, detail="Remito de compra no encontrado")
+    return db_remito
+
+@router.patch("/{remito_id}/encabezado", response_model=RemitoCompraResponse)
+def update_encabezado(
+    remito_id: int,
+    payload: RemitoCompraEncabezadoUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    db_remito = remito_comp_crud.update_encabezado(
+        db, remito_id,
+        proveedor_id=payload.proveedor_id,
+        numero_remito=payload.numero_remito,
+        fecha=payload.fecha,
+        observaciones=payload.observaciones,
+    )
     if db_remito is None:
         raise HTTPException(status_code=404, detail="Remito de compra no encontrado")
     return db_remito

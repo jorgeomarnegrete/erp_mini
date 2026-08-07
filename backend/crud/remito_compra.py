@@ -154,3 +154,17 @@ def update_observaciones(db: Session, remito_id: int, observaciones: str):
     db.commit()
     db.refresh(db_remito)
     return db_remito
+
+def update_encabezado(db: Session, remito_id: int, proveedor_id: int, numero_remito: str, fecha, observaciones: str):
+    """Edita solo los datos de cabecera (proveedor, numero, fecha, observaciones).
+    No toca detalles, afecta_stock ni el stock ya aplicado."""
+    db_remito = db.query(RemitoCompra).filter(RemitoCompra.id == remito_id).first()
+    if not db_remito:
+        return None
+    db_remito.proveedor_id = proveedor_id
+    db_remito.numero_remito = numero_remito
+    db_remito.fecha = fecha
+    db_remito.observaciones = observaciones
+    db.commit()
+    db.refresh(db_remito)
+    return db_remito

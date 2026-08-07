@@ -41,6 +41,12 @@ class RemitoCompraCreate(RemitoCompraBase):
 class RemitoCompraObservacionesUpdate(BaseModel):
     observaciones: Optional[str] = None
 
+class RemitoCompraEncabezadoUpdate(BaseModel):
+    proveedor_id: int
+    numero_remito: str
+    fecha: datetime
+    observaciones: Optional[str] = None
+
 class RemitoCompraResponse(RemitoCompraBase):
     id: int
     fecha: datetime
