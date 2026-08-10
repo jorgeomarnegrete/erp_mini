@@ -46,6 +46,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && !error.config?.url?.includes('/api/auth/login')) {
+      localStorage.removeItem('token');
+      if (window.location.pathname !== '/login') {
+        localStorage.setItem('session_expired', '1');
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);

@@ -5,7 +5,13 @@ import { LogIn } from 'lucide-react';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(() => {
+    if (localStorage.getItem('session_expired')) {
+      localStorage.removeItem('session_expired');
+      return 'Tu sesión expiró. Iniciá sesión de nuevo.';
+    }
+    return null;
+  });
   const { login } = useAuth();
 
   const handleSubmit = async (e) => {

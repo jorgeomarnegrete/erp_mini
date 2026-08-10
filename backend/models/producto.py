@@ -10,7 +10,8 @@ class Producto(Base):
     codigo_barras = Column(String, unique=True, index=True, nullable=True)
     nombre = Column(String, index=True, nullable=False)
     descripcion = Column(Text, nullable=True)
-    
+    observacion = Column(Text, nullable=True)
+
     # Anclas comerciales
     categoria_id = Column(Integer, ForeignKey("categorias_rubros.id"), nullable=False)
     tasa_iva_id = Column(Integer, ForeignKey("tasas_iva.id"), nullable=False)

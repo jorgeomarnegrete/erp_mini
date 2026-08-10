@@ -5,7 +5,7 @@ from jose import jwt
 
 SECRET_KEY = "supeeeeeeer_secreeeet_keeeey_change_this" # Mover a env en prod
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 horas
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

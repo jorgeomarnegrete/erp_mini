@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../App';
 import { Package, Edit, Trash2, Plus, X, Search, Tags, Calculator, PercentCircle, Printer, Save, Link2, Upload, AlertCircle, CheckCircle2, MinusCircle } from 'lucide-react';
 import nunjucks from 'nunjucks';
@@ -7,6 +7,8 @@ export default function Productos() {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [soloConStock, setSoloConStock] = useState(true);
+  const [filtroFamilia, setFiltroFamilia] = useState('');
   const { api } = useAuth();
   
   // Catálogos para listboxes
@@ -56,6 +58,10 @@ export default function Productos() {
   });
   const [qzConnected, setQzConnected] = useState(false);
 
+  // Edición inline (Observación) — bloquea el auto-refresco mientras se está escribiendo
+  const [isInlineEditing, setIsInlineEditing] = useState(false);
+  const savedObsRef = useRef({}); // id -> última observación confirmada en el servidor
+
   const fetchAllData = async () => {
     try {
       const [prodRes, catRes, ivaRes, lpRes] = await Promise.all([
@@ -65,6 +71,7 @@ export default function Productos() {
         api.get('/api/listas-precios')
       ]);
       setProductos(prodRes.data);
+      savedObsRef.current = Object.fromEntries(prodRes.data.map(p => [p.id, p.observacion || '']));
       setCategorias(catRes.data);
       setTasasIva(ivaRes.data);
       setListasPrecios(lpRes.data);
@@ -77,6 +84,47 @@ export default function Productos() {
   useEffect(() => {
     fetchAllData();
   }, [api]);
+
+  // Auto-refresco: cada 60s y al volver a la pestaña, salvo que haya un modal abierto o una celda en edición
+  const isInlineEditingRef = useRef(isInlineEditing);
+  useEffect(() => { isInlineEditingRef.current = isInlineEditing; }, [isInlineEditing]);
+  const modalsOpenRef = useRef(false);
+  useEffect(() => {
+    modalsOpenRef.current = isModalOpen || isImportModalOpen || isLabelModalOpen;
+  }, [isModalOpen, isImportModalOpen, isLabelModalOpen]);
+
+  useEffect(() => {
+    const tick = () => {
+      if (isInlineEditingRef.current || modalsOpenRef.current) return;
+      fetchAllData();
+    };
+    const interval = setInterval(tick, 60000);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [api]);
+
+  const handleObservacionChange = (id, value) => {
+    setProductos(prev => prev.map(p => p.id === id ? { ...p, observacion: value } : p));
+  };
+
+  const handleObservacionBlur = async (prod) => {
+    setIsInlineEditing(false);
+    const value = prod.observacion || '';
+    if (value === (savedObsRef.current[prod.id] || '')) return;
+    try {
+      await api.put(`/api/productos/${prod.id}`, { observacion: value });
+      savedObsRef.current[prod.id] = value;
+    } catch (err) {
+      alert('No se pudo guardar la observación.');
+      setProductos(prev => prev.map(p => p.id === prod.id ? { ...p, observacion: savedObsRef.current[prod.id] || '' } : p));
+    }
+  };
 
   const getEmptyForm = () => ({
     id: null, codigo_interno: '', codigo_barras: '', nombre: '', descripcion: '',
@@ -320,6 +368,8 @@ export default function Productos() {
   };
 
   const filteredProductos = productos.filter((p) => {
+    if (soloConStock && p.stock_actual <= 0) return false;
+    if (filtroFamilia && p.categoria_id !== parseInt(filtroFamilia)) return false;
     if (!searchTerm.trim()) return true;
     const tokens = searchTerm.toLowerCase().split(/\s+/).filter(t => t);
     const textToSearch = `${p.codigo_interno} ${p.nombre} ${p.categoria.nombre} ${p.codigo_barras || ''}`.toLowerCase();
@@ -368,21 +418,44 @@ export default function Productos() {
           </button>
         </div>
       </div>
-      
+
+      <div className="px-8 py-3 border-b border-gray-100 bg-gray-50/40 flex flex-wrap items-center gap-6">
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={soloConStock}
+            onChange={e => setSoloConStock(e.target.checked)}
+            className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+          />
+          <span className="text-sm font-bold text-gray-700">Solo productos con Stock</span>
+        </label>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black text-gray-500 uppercase tracking-wide">Familia</span>
+          <select
+            value={filtroFamilia}
+            onChange={e => setFiltroFamilia(e.target.value)}
+            className="p-2 rounded-lg border border-gray-300 text-sm font-bold bg-white outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Todas</option>
+            {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+          </select>
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 text-gray-500 font-bold text-xs tracking-wider uppercase border-b border-gray-200">
               <th className="px-6 py-4">Nombre</th>
-              <th className="px-6 py-4">Costo</th>
-              <th className="px-6 py-4">Lista</th>
+              <th className="px-6 py-4">Observación</th>
               <th className="px-6 py-4 text-center">Stock</th>
               <th className="px-6 py-4 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100/60">
             {filteredProductos.map((prod) => (
-              <tr key={prod.id} className="hover:bg-indigo-50/40 transition-colors duration-200">
+              <tr key={prod.id} className={`transition-colors duration-200 ${prod.observacion ? 'bg-orange-50 hover:bg-orange-100' : 'hover:bg-indigo-50/40'}`}>
                 <td className="px-6 py-4">
                   <div className="flex flex-col">
                     <span className="text-sm font-black text-gray-900 tracking-tight">{prod.nombre}</span>
@@ -392,43 +465,28 @@ export default function Productos() {
                     </div>
                   </div>
                 </td>
-                
+
                 <td className="px-6 py-4">
-                  <div className="flex flex-col space-y-1">
-                     <span className="text-lg font-black text-emerald-700 tracking-tight">${prod.costo_neto.toFixed(2)}</span>
-                     <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1 rounded w-fit">+ {prod.tasa_iva.valor}% IVA</span>
-                  </div>
-                </td>
-                
-                <td className="px-6 py-4">
-                    {/* Resumen Comercial de Listas */}
-                    <div className="flex flex-col space-y-1">
-                        {listasPrecios.slice(0, 2).map(lista => {
-                           const override = prod.precios_personalizados.find(p => p.lista_precio_id === lista.id)?.precio_personalizado;
-                           return (
-                             <div key={lista.id} className="flex items-center text-xs">
-                                <span className="font-bold text-gray-600 mr-2 w-16 truncate">{lista.nombre}:</span>
-                                {override ? (
-                                   <span className="text-purple-600 font-black px-1.5 bg-purple-50 border border-purple-200 rounded text-[10px]">Override: ${override}</span>
-                                ) : (
-                                   <span className="text-gray-500 font-semibold tracking-wide">${(prod.costo_neto * (1 + lista.porcentaje_ganancia / 100)).toFixed(2)}</span>
-                                )}
-                             </div>
-                           )
-                        })}
-                        {listasPrecios.length > 2 && <span className="text-[10px] text-gray-400 font-bold italic">+{listasPrecios.length - 2} Listas...</span>}
-                    </div>
+                  <input
+                    type="text"
+                    className="w-full min-w-[220px] p-1.5 rounded border border-transparent hover:border-gray-300 focus:border-orange-500 outline-none text-sm font-medium text-gray-700 bg-transparent focus:bg-white"
+                    placeholder="Sin observación"
+                    value={prod.observacion || ''}
+                    onFocus={() => setIsInlineEditing(true)}
+                    onChange={e => handleObservacionChange(prod.id, e.target.value)}
+                    onBlur={() => handleObservacionBlur(prod)}
+                  />
                 </td>
 
                 <td className="px-6 py-4 text-center">
-                  <span className={`inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-lg font-mono font-black border 
-                    ${prod.stock_actual <= 0 ? 'border-red-400 text-red-600 bg-red-50' : 
-                      prod.stock_actual <= prod.stock_minimo ? 'border-orange-400 text-orange-600 bg-orange-50' : 
+                  <span className={`inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-lg font-mono font-black border
+                    ${prod.stock_actual <= 0 ? 'border-red-400 text-red-600 bg-red-50' :
+                      prod.stock_actual <= prod.stock_minimo ? 'border-orange-400 text-orange-600 bg-orange-50' :
                       'border-gray-200'}`}>
                     {prod.stock_actual.toFixed(2)} {prod.unidad}
                   </span>
                 </td>
-                
+
                 <td className="px-6 py-4 whitespace-nowrap text-center space-x-2">
                   <button onClick={() => openLabelModal(prod)} className="text-teal-600 bg-teal-50 p-2 rounded-lg hover:bg-teal-600 hover:text-white transition-all shadow-sm" title="Imprimir Etiqueta">
                     <Printer className="w-5 h-5" />
@@ -444,7 +502,7 @@ export default function Productos() {
             ))}
             {filteredProductos.length === 0 && (
                 <tr>
-                   <td colSpan="5" className="px-6 py-12 text-center text-gray-400 font-semibold text-lg italic">
+                   <td colSpan="4" className="px-6 py-12 text-center text-gray-400 font-semibold text-lg italic">
                      {searchTerm ? 'No se encontraron productos para esta búsqueda.' : 'No hay productos registrados.'}
                    </td>
                 </tr>

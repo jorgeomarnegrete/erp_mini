@@ -35,6 +35,7 @@ class ProductoBase(BaseModel):
     codigo_barras: Optional[str] = None
     nombre: str
     descripcion: Optional[str] = None
+    observacion: Optional[str] = None
     categoria_id: int
     tasa_iva_id: int
     costo_neto: float = Field(default=0.0, ge=0)
@@ -52,6 +53,7 @@ class ProductoUpdate(BaseModel):
     codigo_barras: str | None = None
     nombre: str | None = None
     descripcion: str | None = None
+    observacion: str | None = None
     categoria_id: int | None = None
     tasa_iva_id: int | None = None
     costo_neto: float | None = None
