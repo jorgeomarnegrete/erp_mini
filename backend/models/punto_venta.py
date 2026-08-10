@@ -19,5 +19,6 @@ class PuntoVenta(Base):
     prox_factura_c = Column(Integer, default=1, nullable=False)
     prox_remito = Column(Integer, default=1, nullable=False)
     prox_recibo = Column(Integer, default=1, nullable=False)
+    prox_devolucion = Column(Integer, default=1, nullable=False)
     
     activo = Column(Boolean, default=True, nullable=False)

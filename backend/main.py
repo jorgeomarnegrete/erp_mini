@@ -26,8 +26,10 @@ import models.remito_compra
 import models.transporte
 import models.carga_preparacion
 import models.orden_produccion
+import models.devolucion
 from routers import pedidos, remitos, remitos_compra, transporte, carga_preparacion, logistica_control, qz, producto_etiqueta
 from routers import orden_produccion
+from routers import devoluciones
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -53,6 +55,8 @@ async def lifespan(app: FastAPI):
         db.execute(text("ALTER TABLE carga_preparacion ADD COLUMN IF NOT EXISTS nro_lote VARCHAR"))
         # Migración para ZPL en Plantillas
         db.execute(text("ALTER TABLE plantillas_documentos ADD COLUMN IF NOT EXISTS codigo_zpl TEXT"))
+        # Numerador de Devoluciones
+        db.execute(text("ALTER TABLE puntos_venta ADD COLUMN IF NOT EXISTS prox_devolucion INTEGER DEFAULT 1 NOT NULL"))
         db.commit()
     except Exception as e:
         db.rollback()
@@ -595,6 +599,111 @@ async def lifespan(app: FastAPI):
 
     db.commit()
 
+    # 2d. Devolución
+    p_devolucion_exist = db.query(models.plantilla.PlantillaDocumento).filter(models.plantilla.PlantillaDocumento.tipo_documento == "DEVOLUCION").first()
+
+    html_devolucion = """
+    <html>
+    <head>
+      <style>
+         body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; }
+         .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 20px; }
+         .logo { max-width: 150px; max-height: 80px; }
+         .empresa-datos { text-align: left; font-size: 11px; color: #555; margin-left: 20px; }
+         .title-box { text-align: right; }
+         .title-box h1 { margin: 0; color: #111; font-size: 24px; }
+         .cliente-box { margin-top: 20px; padding: 15px; border: 1px solid #ddd; background: #fafafa; border-radius: 5px; }
+         .motivo-box { margin-top: 15px; padding: 12px 15px; border: 1px solid #f0c36d; background: #fff8e6; border-radius: 5px; font-size: 12px; }
+         table.items { width: 100%; border-collapse: collapse; margin-top: 30px; font-size: 11px; }
+         table.items th { background-color: #222; color: #fff; padding: 10px; text-align: left; }
+         table.items td { border-bottom: 1px solid #eee; padding: 10px; }
+         .firma-box { margin-top: 70px; display: flex; justify-content: space-between; }
+         .firma-item { width: 45%; text-align: center; }
+         .firma-linea { border-top: 1px solid #333; margin-top: 60px; padding-top: 8px; font-size: 11px; }
+      </style>
+    </head>
+    <body>
+       <div class="header">
+          <table style="width: 100%;"><tr>
+             <td style="width:50%; vertical-align: top;">
+                {% if empresa.logo_base64 %}
+                  <img class="logo" src="{{ empresa.logo_base64 }}" />
+                {% endif %}
+                <div class="empresa-datos">
+                   <strong>{{ empresa.razon_social }}</strong><br>
+                   CUIT: {{ empresa.cuit or '-' }}<br>
+                   Dir: {{ empresa.domicilio_comercial or '-' }}<br>
+                   Tel: {{ empresa.telefono or '-' }}<br>
+                </div>
+             </td>
+             <td style="width:50%; vertical-align: top;" class="title-box">
+                <h1>DEVOLUCIÓN</h1>
+                <strong>Nº {{ "%04d" | format(devolucion.punto_venta.numero) }}-{{ "%08d" | format(devolucion.numero_comprobante) }}</strong><br>
+                Fecha: {{ devolucion.fecha.strftime('%d/%m/%Y') if devolucion.fecha else '' }}
+             </td>
+          </tr></table>
+       </div>
+
+       <div class="cliente-box">
+          <strong>Señor/es: {{ cliente.razon_social }}</strong><br>
+          Documento: {{ cliente.documento }} ({{ cliente.tipo_resp.nombre if cliente.tipo_resp else '' }})<br>
+          Domicilio: {{ cliente.direccion or '-' }}, {{ cliente.localidad or '' }}<br>
+          {% if transporte %}Transporte: {{ transporte.nombre }}{% endif %}
+       </div>
+
+       <div class="motivo-box">
+          <strong>Motivo de la devolución:</strong> {{ devolucion.motivo }}
+       </div>
+
+       <table class="items">
+          <thead>
+             <tr>
+                <th style="width: 80px;">Cant.</th>
+                <th>Descripción</th>
+                <th style="width: 140px;">Lote</th>
+             </tr>
+          </thead>
+          <tbody>
+             {% for det in detalles %}
+             <tr>
+                <td>{{ "%.2f"|format(det.cantidad) }}</td>
+                <td>{{ det.producto.nombre }}</td>
+                <td>{{ det.nro_lote or '-' }}</td>
+             </tr>
+             {% endfor %}
+          </tbody>
+       </table>
+
+       <div style="margin-top: 20px; font-size: 10px; color: #777;">
+          {{ devolucion.observaciones if devolucion.observaciones else '' }}
+       </div>
+
+       <div class="firma-box">
+          <div class="firma-item">
+             <div class="firma-linea">Firma Transportista</div>
+          </div>
+          <div class="firma-item">
+             <div class="firma-linea">Aclaración / DNI</div>
+          </div>
+       </div>
+
+       <div style="margin-top: 40px; font-size: 10px; color: #777; text-align: center;">
+          Documento no válido como factura.<br>
+          <i>Generado por Factu ERP Avanzado v2.0</i>
+       </div>
+    </body>
+    </html>
+    """
+
+    if not p_devolucion_exist:
+        p_devolucion = models.plantilla.PlantillaDocumento(nombre="Devolución Estándar", tipo_documento="DEVOLUCION", codigo_html=html_devolucion, activa=True)
+        db.add(p_devolucion)
+    else:
+        # Forzar actualización de la plantilla si ya existe pero está rota
+        p_devolucion_exist.codigo_html = html_devolucion
+
+    db.commit()
+
     # 3. Orden de Producción (Parte de Trabajo) — SOLO crear si no existe (respeta ediciones del admin)
     p_op_exist = db.query(models.plantilla.PlantillaDocumento).filter(models.plantilla.PlantillaDocumento.tipo_documento == "ORDEN_PRODUCCION").first()
     if not p_op_exist:
@@ -772,7 +881,13 @@ async def lifespan(app: FastAPI):
         m_ing_scan = Menu(nombre="Ingreso por Scanner", ruta="/stock/ingreso-scanner", icono="ScanBarcode", parent_id=m_stock_exist.id, orden=2)
         db.add(m_ing_scan)
         db.commit()
-        
+
+    m_devoluciones_exist = db.query(Menu).filter(Menu.ruta == "/stock/devoluciones").first()
+    if not m_devoluciones_exist:
+        m_devoluciones = Menu(nombre="Devoluciones", ruta="/stock/devoluciones", icono="RotateCcw", parent_id=m_stock_exist.id, orden=3)
+        db.add(m_devoluciones)
+        db.commit()
+
     # Auto-asignar a administradores si no lo tienen
     admins = db.query(User).filter(User.is_admin == True).all()
     for admin in admins:
@@ -807,6 +922,11 @@ async def lifespan(app: FastAPI):
         m_i_s = db.query(Menu).filter(Menu.ruta == "/stock/ingreso-scanner").first()
         if m_i_s and m_i_s.id not in admin_menus:
             admin.menus.append(m_i_s)
+            added = True
+
+        m_dev = db.query(Menu).filter(Menu.ruta == "/stock/devoluciones").first()
+        if m_dev and m_dev.id not in admin_menus:
+            admin.menus.append(m_dev)
             added = True
 
         m_pedidos_exist = db.query(Menu).filter(Menu.ruta == "/pedidos").first()
@@ -1020,6 +1140,7 @@ app.include_router(stk_mov.router)
 app.include_router(pedidos.router)
 app.include_router(remitos.router)
 app.include_router(remitos_compra.router)
+app.include_router(devoluciones.router)
 app.include_router(qz.router)
 app.include_router(transporte.router)
 app.include_router(carga_preparacion.router)
