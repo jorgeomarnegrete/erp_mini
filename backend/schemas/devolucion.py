@@ -5,6 +5,8 @@ from schemas.cliente import ClienteResponse
 from schemas.punto_venta import PuntoVentaResponse
 from schemas.producto import ProductoResponse
 from schemas.transporte import TransporteResponse
+from schemas.vehiculo import VehiculoResponse
+from schemas.chofer import ChoferResponse
 
 # ====== DETALLES (Renglones) ======
 
@@ -29,7 +31,8 @@ class DevolucionDetalleResponse(DevolucionDetalleBase):
 class DevolucionBase(BaseModel):
     punto_venta_id: int
     cliente_id: int
-    transporte_id: Optional[int] = None
+    vehiculo_id: Optional[int] = None
+    chofer_id: Optional[int] = None
     motivo: str
     observaciones: Optional[str] = None
 
@@ -45,6 +48,8 @@ class DevolucionResponse(DevolucionBase):
     punto_venta: Optional[PuntoVentaResponse] = None
     cliente: Optional[ClienteResponse] = None
     transporte: Optional[TransporteResponse] = None
+    vehiculo: Optional[VehiculoResponse] = None
+    chofer: Optional[ChoferResponse] = None
     detalles: List[DevolucionDetalleResponse]
 
     class Config:

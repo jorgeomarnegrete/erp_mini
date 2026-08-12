@@ -24,6 +24,8 @@ import Dashboard from './pages/Dashboard';
 import AjustesStock from './pages/AjustesStock';
 import IngresoStock from './pages/IngresoStock';
 import Devoluciones from './pages/Devoluciones';
+import Vehiculos from './pages/Vehiculos';
+import Choferes from './pages/Choferes';
 import Transportes from './pages/Transportes';
 import AsignacionCargas from './pages/AsignacionCargas';
 import PreparacionCarga from './pages/PreparacionCarga';
@@ -145,6 +147,8 @@ function App() {
             <Route path="logistica/asignacion" element={<AsignacionCargas />} />
             <Route path="logistica/preparacion" element={<PreparacionCarga />} />
             <Route path="logistica/control" element={<ControlDespacho />} />
+            <Route path="logistica/vehiculos" element={<Vehiculos />} />
+            <Route path="logistica/choferes" element={<Choferes />} />
             
             {/* Nueva Ruta Configuración Empresa y Diseño */}
             <Route path="config/empresa" element={user?.is_admin ? <Empresa /> : <Navigate to="/" />} />

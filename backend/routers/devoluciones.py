@@ -70,6 +70,8 @@ async def export_pdf(devolucion_id: int, current_user: User = Depends(get_curren
             "detalles": devolucion.detalles,
             "cliente": devolucion.cliente,
             "transporte": devolucion.transporte,
+            "vehiculo": devolucion.vehiculo,
+            "chofer": devolucion.chofer,
         }
         pdf_bytes = generar_pdf_desde_html(plantilla.codigo_html, datos_jinja)
         return Response(

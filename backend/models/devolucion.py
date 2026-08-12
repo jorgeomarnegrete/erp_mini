@@ -14,7 +14,9 @@ class Devolucion(Base):
 
     cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)
     usuario_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    transporte_id = Column(Integer, ForeignKey("transportes.id"), nullable=True)
+    transporte_id = Column(Integer, ForeignKey("transportes.id"), nullable=True)  # Deprecado: solo lectura para devoluciones históricas
+    vehiculo_id = Column(Integer, ForeignKey("vehiculos.id"), nullable=True)
+    chofer_id = Column(Integer, ForeignKey("choferes.id"), nullable=True)
 
     motivo = Column(Text, nullable=False)
     observaciones = Column(Text, nullable=True)
@@ -23,6 +25,8 @@ class Devolucion(Base):
     cliente = relationship("Cliente", lazy="joined")
     usuario = relationship("User", lazy="joined")
     transporte = relationship("Transporte", lazy="joined")
+    vehiculo = relationship("Vehiculo", lazy="joined")
+    chofer = relationship("Chofer", lazy="joined")
 
     detalles = relationship("DevolucionDetalle", back_populates="devolucion", cascade="all, delete-orphan", lazy="joined")
 

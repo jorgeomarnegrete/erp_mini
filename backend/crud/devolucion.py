@@ -22,7 +22,8 @@ def create_devolucion(db: Session, devolucion_in: DevolucionCreate, user_id: int
         numero_comprobante=numero_asignado,
         cliente_id=devolucion_in.cliente_id,
         usuario_id=user_id,
-        transporte_id=devolucion_in.transporte_id,
+        vehiculo_id=devolucion_in.vehiculo_id,
+        chofer_id=devolucion_in.chofer_id,
         motivo=devolucion_in.motivo,
         observaciones=devolucion_in.observaciones,
     )

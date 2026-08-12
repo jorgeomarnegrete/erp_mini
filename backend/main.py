@@ -27,9 +27,12 @@ import models.transporte
 import models.carga_preparacion
 import models.orden_produccion
 import models.devolucion
+import models.vehiculo
+import models.chofer
 from routers import pedidos, remitos, remitos_compra, transporte, carga_preparacion, logistica_control, qz, producto_etiqueta
 from routers import orden_produccion
 from routers import devoluciones
+from routers import vehiculo, chofer
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -57,6 +60,9 @@ async def lifespan(app: FastAPI):
         db.execute(text("ALTER TABLE plantillas_documentos ADD COLUMN IF NOT EXISTS codigo_zpl TEXT"))
         # Numerador de Devoluciones
         db.execute(text("ALTER TABLE puntos_venta ADD COLUMN IF NOT EXISTS prox_devolucion INTEGER DEFAULT 1 NOT NULL"))
+        # Vehículo/Chofer en Devoluciones (reemplaza a Transporte, que queda solo para registros históricos)
+        db.execute(text("ALTER TABLE devoluciones ADD COLUMN IF NOT EXISTS vehiculo_id INTEGER REFERENCES vehiculos(id)"))
+        db.execute(text("ALTER TABLE devoluciones ADD COLUMN IF NOT EXISTS chofer_id INTEGER REFERENCES choferes(id)"))
         db.commit()
     except Exception as e:
         db.rollback()
@@ -648,7 +654,12 @@ async def lifespan(app: FastAPI):
           <strong>Señor/es: {{ cliente.razon_social }}</strong><br>
           Documento: {{ cliente.documento }} ({{ cliente.tipo_resp.nombre if cliente.tipo_resp else '' }})<br>
           Domicilio: {{ cliente.direccion or '-' }}, {{ cliente.localidad or '' }}<br>
-          {% if transporte %}Transporte: {{ transporte.nombre }}{% endif %}
+          {% if vehiculo or chofer %}
+             {% if vehiculo %}Vehículo: {{ vehiculo.descripcion }}{% if vehiculo.patente %} ({{ vehiculo.patente }}){% endif %}<br>{% endif %}
+             {% if chofer %}Chofer: {{ chofer.nombre }}{% endif %}
+          {% elif transporte %}
+             Transporte: {{ transporte.nombre }}
+          {% endif %}
        </div>
 
        <div class="motivo-box">
@@ -680,7 +691,7 @@ async def lifespan(app: FastAPI):
 
        <div class="firma-box">
           <div class="firma-item">
-             <div class="firma-linea">Firma Transportista</div>
+             <div class="firma-linea">Firma Chofer</div>
           </div>
           <div class="firma-item">
              <div class="firma-linea">Aclaración / DNI</div>
@@ -997,6 +1008,22 @@ async def lifespan(app: FastAPI):
         db.refresh(m_control_menu)
         m_control_menu_exist = m_control_menu
 
+    m_vehiculos_menu_exist = db.query(Menu).filter(Menu.ruta == "/logistica/vehiculos").first()
+    if not m_vehiculos_menu_exist:
+        m_vehiculos_menu = Menu(nombre="Vehículos", ruta="/logistica/vehiculos", icono="Car", parent_id=m_logistica_exist.id, orden=5)
+        db.add(m_vehiculos_menu)
+        db.commit()
+        db.refresh(m_vehiculos_menu)
+        m_vehiculos_menu_exist = m_vehiculos_menu
+
+    m_choferes_menu_exist = db.query(Menu).filter(Menu.ruta == "/logistica/choferes").first()
+    if not m_choferes_menu_exist:
+        m_choferes_menu = Menu(nombre="Choferes", ruta="/logistica/choferes", icono="IdCard", parent_id=m_logistica_exist.id, orden=6)
+        db.add(m_choferes_menu)
+        db.commit()
+        db.refresh(m_choferes_menu)
+        m_choferes_menu_exist = m_choferes_menu
+
     # Asignar a administradores
     admins = db.query(User).filter(User.is_admin == True).all()
     for admin in admins:
@@ -1016,6 +1043,12 @@ async def lifespan(app: FastAPI):
             added_log = True
         if m_control_menu_exist.id not in admin_menus:
             admin.menus.append(m_control_menu_exist)
+            added_log = True
+        if m_vehiculos_menu_exist.id not in admin_menus:
+            admin.menus.append(m_vehiculos_menu_exist)
+            added_log = True
+        if m_choferes_menu_exist.id not in admin_menus:
+            admin.menus.append(m_choferes_menu_exist)
             added_log = True
         if added_log:
             db.commit()
@@ -1147,3 +1180,5 @@ app.include_router(carga_preparacion.router)
 app.include_router(logistica_control.router)
 app.include_router(producto_etiqueta.router)
 app.include_router(orden_produccion.router)
+app.include_router(vehiculo.router)
+app.include_router(chofer.router)

@@ -14,7 +14,8 @@ export default function Devoluciones() {
   // Catálogos
   const [clientes, setClientes] = useState([]);
   const [productos, setProductos] = useState([]);
-  const [transportes, setTransportes] = useState([]);
+  const [vehiculos, setVehiculos] = useState([]);
+  const [choferes, setChoferes] = useState([]);
   const [puntosVenta, setPuntosVenta] = useState([]);
 
   // Filtros y paginación del listado
@@ -47,7 +48,8 @@ export default function Devoluciones() {
     punto_venta_id: '',
     cliente_id: '',
     cliente: null,
-    transporte_id: '',
+    vehiculo_id: '',
+    chofer_id: '',
     motivo: '',
     observaciones: '',
   });
@@ -58,15 +60,17 @@ export default function Devoluciones() {
 
   const fetchCatalogos = async () => {
     try {
-      const [resCli, resProd, resTra, resPv] = await Promise.all([
+      const [resCli, resProd, resVeh, resCho, resPv] = await Promise.all([
         api.get('/api/clientes'),
         api.get('/api/productos'),
-        api.get('/api/transportes'),
+        api.get('/api/vehiculos'),
+        api.get('/api/choferes'),
         api.get('/api/puntos-venta'),
       ]);
       setClientes(resCli.data);
       setProductos(resProd.data.filter(p => p.activo));
-      setTransportes(resTra.data);
+      setVehiculos(resVeh.data);
+      setChoferes(resCho.data);
       setPuntosVenta(resPv.data);
     } catch (error) {
       console.error("Error al traer datos:", error);
@@ -179,7 +183,8 @@ export default function Devoluciones() {
       punto_venta_id: puntosVenta.length > 0 ? puntosVenta[0].id : '',
       cliente_id: '',
       cliente: null,
-      transporte_id: '',
+      vehiculo_id: '',
+      chofer_id: '',
       motivo: '',
       observaciones: '',
     });
@@ -253,7 +258,8 @@ export default function Devoluciones() {
       const payload = {
         punto_venta_id: head.punto_venta_id,
         cliente_id: head.cliente_id,
-        transporte_id: head.transporte_id || null,
+        vehiculo_id: head.vehiculo_id || null,
+        chofer_id: head.chofer_id || null,
         motivo: head.motivo,
         observaciones: head.observaciones,
         detalles: cleanDetalles.map(d => ({
@@ -390,7 +396,7 @@ export default function Devoluciones() {
               <th className="px-8 py-4">Nº</th>
               <th className="px-8 py-4">Fecha</th>
               <th className="px-8 py-4">Cliente</th>
-              <th className="px-8 py-4">Transporte</th>
+              <th className="px-8 py-4">Vehículo / Chofer</th>
               <th className="px-8 py-4">Motivo</th>
               <th className="px-8 py-4 text-center">Acciones</th>
             </tr>
@@ -413,7 +419,13 @@ export default function Devoluciones() {
                   <span className="text-sm font-black text-gray-700">{d.cliente?.razon_social}</span>
                 </td>
                 <td className="px-8 py-4 whitespace-nowrap text-sm font-medium text-gray-600">
-                  {d.transporte?.nombre || '-'}
+                  {d.vehiculo || d.chofer ? (
+                    <>
+                      {d.vehiculo?.descripcion || ''}
+                      {d.vehiculo && d.chofer ? ' — ' : ''}
+                      {d.chofer?.nombre || ''}
+                    </>
+                  ) : (d.transporte?.nombre || '-')}
                 </td>
                 <td className="px-8 py-4 text-sm text-gray-600 max-w-xs truncate">{d.motivo}</td>
                 <td className="px-8 py-4 whitespace-nowrap text-center">
@@ -498,7 +510,16 @@ export default function Devoluciones() {
               <div className="mb-4 text-sm text-gray-600 space-y-1">
                 <div><span className="font-bold text-gray-800">Cliente:</span> {viewDevolucion.cliente?.razon_social}</div>
                 <div><span className="font-bold text-gray-800">Motivo:</span> {viewDevolucion.motivo}</div>
-                {viewDevolucion.transporte && (
+                {(viewDevolucion.vehiculo || viewDevolucion.chofer) ? (
+                  <>
+                    {viewDevolucion.vehiculo && (
+                      <div><span className="font-bold text-gray-800">Vehículo:</span> {viewDevolucion.vehiculo.descripcion}{viewDevolucion.vehiculo.patente ? ` (${viewDevolucion.vehiculo.patente})` : ''}</div>
+                    )}
+                    {viewDevolucion.chofer && (
+                      <div><span className="font-bold text-gray-800">Chofer:</span> {viewDevolucion.chofer.nombre}</div>
+                    )}
+                  </>
+                ) : viewDevolucion.transporte && (
                   <div><span className="font-bold text-gray-800">Transporte:</span> {viewDevolucion.transporte.nombre}</div>
                 )}
               </div>
@@ -567,14 +588,25 @@ export default function Devoluciones() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">Transporte (retira)</label>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Vehículo (retira)</label>
                   <select
                     className="w-full p-2.5 rounded-lg border border-gray-300 font-bold bg-white"
-                    value={head.transporte_id}
-                    onChange={e => setHead({ ...head, transporte_id: e.target.value ? parseInt(e.target.value) : '' })}
+                    value={head.vehiculo_id}
+                    onChange={e => setHead({ ...head, vehiculo_id: e.target.value ? parseInt(e.target.value) : '' })}
                   >
                     <option value="">Sin asignar</option>
-                    {transportes.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                    {vehiculos.map(v => <option key={v.id} value={v.id}>{v.descripcion}{v.patente ? ` (${v.patente})` : ''}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Chofer</label>
+                  <select
+                    className="w-full p-2.5 rounded-lg border border-gray-300 font-bold bg-white"
+                    value={head.chofer_id}
+                    onChange={e => setHead({ ...head, chofer_id: e.target.value ? parseInt(e.target.value) : '' })}
+                  >
+                    <option value="">Sin asignar</option>
+                    {choferes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                   </select>
                 </div>
                 {puntosVenta.length > 1 && (
