@@ -23,6 +23,7 @@ import RemitosCompra from './pages/RemitosCompra';
 import Dashboard from './pages/Dashboard';
 import AjustesStock from './pages/AjustesStock';
 import IngresoStock from './pages/IngresoStock';
+import StockMinimo from './pages/StockMinimo';
 import Devoluciones from './pages/Devoluciones';
 import Vehiculos from './pages/Vehiculos';
 import Choferes from './pages/Choferes';
@@ -138,6 +139,7 @@ function App() {
             <Route path="stock/ajustes" element={<AjustesStock />} />
             <Route path="stock/ingreso-scanner" element={<IngresoStock />} />
             <Route path="stock/devoluciones" element={<Devoluciones />} />
+            <Route path="stock/stock-minimo" element={<StockMinimo />} />
             
             {/* Módulo Producción */}
             <Route path="produccion/ordenes" element={<OrdenesProduccion />} />

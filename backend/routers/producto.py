@@ -1,12 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Response
 from sqlalchemy.orm import Session
+from typing import Optional
+from datetime import datetime
 
 from database import get_db
 from models.user import User
+from models.categoria import Categoria
+from models.plantilla import PlantillaDocumento
 from schemas.producto import ProductoCreate, ProductoUpdate, ProductoResponse
 from schemas.producto_import import ImportProductoResumen, ImportProductoConfirmarResponse
 from crud import producto as crud_prod
 from crud import producto_import as crud_producto_import
+from crud.empresa import get_empresa
+from core.pdf_generator import generar_pdf_desde_html
 from routers.auth import get_current_user
 
 router = APIRouter(prefix="/api/productos", tags=["producto"])
@@ -39,6 +45,54 @@ async def confirmar_actualizar_productos(file: UploadFile = File(...), current_u
 async def read_all_productos(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Apertura total de inventarios (Incluyendo Matrices Anidadas)"""
     return crud_prod.get_all(db)
+
+@router.get("/alertas/stock-minimo")
+async def get_alerta_stock_minimo(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Conteo de productos activos por debajo del stock mínimo (excluye los que no tienen stock mínimo configurado)"""
+    return {"cantidad": crud_prod.count_bajo_stock_minimo(db)}
+
+@router.get("/alertas/stock-minimo/pdf")
+async def export_reporte_stock_minimo_pdf(categoria_id: Optional[int] = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Genera el PDF del reporte de productos bajo stock mínimo, opcionalmente filtrado por familia"""
+    items = crud_prod.get_bajo_stock_minimo(db, categoria_id=categoria_id)
+
+    empresa = get_empresa(db)
+    if not empresa:
+        raise HTTPException(status_code=500, detail="Configuración de empresa no encontrada")
+
+    plantilla = db.query(PlantillaDocumento).filter(PlantillaDocumento.tipo_documento == 'REPORTE_STOCK_MINIMO', PlantillaDocumento.activa == True).first()
+    if not plantilla:
+        raise HTTPException(status_code=500, detail="No hay una plantilla activa para REPORTE_STOCK_MINIMO")
+
+    familia_label = "Todas"
+    if categoria_id:
+        categoria = db.query(Categoria).filter(Categoria.id == categoria_id).first()
+        familia_label = categoria.nombre if categoria else "Todas"
+
+    try:
+        datos_jinja = {
+            "productos": items,
+            "empresa": empresa,
+            "total": len(items),
+            "fecha_generacion": datetime.now(),
+            "filtros": {
+                "familia_label": familia_label,
+            },
+        }
+        pdf_bytes = generar_pdf_desde_html(plantilla.codigo_html, datos_jinja)
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": "inline; filename=Reporte_Stock_Minimo.pdf"
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error al generar PDF: {str(e)}")
 
 @router.post("", response_model=ProductoResponse, status_code=status.HTTP_201_CREATED)
 async def create_producto(prod_in: ProductoCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

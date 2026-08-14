@@ -14,6 +14,11 @@ from core.pdf_generator import generar_pdf_desde_html
 
 router = APIRouter(prefix="/api/devoluciones", tags=["devoluciones"])
 
+@router.get("/alertas/hoy")
+async def get_alerta_devoluciones_hoy(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Conteo de devoluciones recibidas hoy"""
+    return {"cantidad": crud_devolucion.count_hoy(db)}
+
 @router.get("", response_model=DevolucionListResponse)
 async def read_devoluciones(
     skip: int = 0,

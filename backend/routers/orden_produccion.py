@@ -25,6 +25,12 @@ async def read_ordenes(skip: int = 0, limit: int = 100, current_user: User = Dep
     return crud_op.get_ordenes(db, skip=skip, limit=limit)
 
 
+@router.get("/alertas/abiertas")
+async def get_alerta_op_abiertas(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Conteo de órdenes de producción actualmente abiertas"""
+    return {"cantidad": crud_op.count_abiertas(db)}
+
+
 @router.get("/proximo-lote")
 async def proximo_lote(fecha_vencimiento: date, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Sugiere el próximo nro_lote (YYYYMMDD-NN) para una fecha de vencimiento."""

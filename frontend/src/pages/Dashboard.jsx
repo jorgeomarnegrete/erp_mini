@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { Building2, Phone, Mail, Globe, MapPin } from 'lucide-react';
+import { Building2, Phone, Mail, Globe, MapPin, AlertTriangle, CheckCircle2, Factory, RotateCcw } from 'lucide-react';
 
 export default function Dashboard() {
   const [empresa, setEmpresa] = useState(null);
+  const [alertaStock, setAlertaStock] = useState(null);
+  const [opAbiertas, setOpAbiertas] = useState(null);
+  const [devolucionesHoy, setDevolucionesHoy] = useState(null);
   const [loading, setLoading] = useState(true);
   const { api, user } = useAuth();
 
@@ -17,7 +20,34 @@ export default function Dashboard() {
       }
       setLoading(false);
     };
+    const fetchAlertaStock = async () => {
+      try {
+        const res = await api.get('/api/productos/alertas/stock-minimo');
+        setAlertaStock(res.data.cantidad);
+      } catch (err) {
+        console.error("Error cargando alerta de stock:", err);
+      }
+    };
+    const fetchOpAbiertas = async () => {
+      try {
+        const res = await api.get('/api/ordenes-produccion/alertas/abiertas');
+        setOpAbiertas(res.data.cantidad);
+      } catch (err) {
+        console.error("Error cargando OP abiertas:", err);
+      }
+    };
+    const fetchDevolucionesHoy = async () => {
+      try {
+        const res = await api.get('/api/devoluciones/alertas/hoy');
+        setDevolucionesHoy(res.data.cantidad);
+      } catch (err) {
+        console.error("Error cargando devoluciones de hoy:", err);
+      }
+    };
     fetchEmpresa();
+    fetchAlertaStock();
+    fetchOpAbiertas();
+    fetchDevolucionesHoy();
   }, [api]);
 
   if (loading) {
@@ -108,14 +138,51 @@ export default function Dashboard() {
 
       {/* Tarjetas Rapidas del Dashboard (Opcional a futuro) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between opacity-50 cursor-not-allowed">
-            <div>
-               <p className="text-sm font-bold text-gray-400">Ventas del Mes</p>
-               <h3 className="text-2xl font-black text-gray-300">$ 0.00</h3>
-            </div>
-            <div className="bg-gray-50 p-3 rounded-full"><Building2 className="w-6 h-6 text-gray-300" /></div>
-         </div>
-         {/* Espacio para estirarlo a futuro... */}
+         {alertaStock > 0 ? (
+           <div className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 flex items-center justify-between">
+              <div>
+                 <p className="text-sm font-bold text-orange-500">Alerta de Stock</p>
+                 <h3 className="text-2xl font-black text-gray-800">Hay {alertaStock} producto{alertaStock === 1 ? '' : 's'} bajo el stock mínimo</h3>
+              </div>
+              <div className="bg-orange-50 p-3 rounded-full shrink-0 ml-4"><AlertTriangle className="w-6 h-6 text-orange-500" /></div>
+           </div>
+         ) : alertaStock === 0 ? (
+           <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between">
+              <div>
+                 <p className="text-sm font-bold text-emerald-500">Stock Mínimo</p>
+                 <h3 className="text-2xl font-black text-gray-800">Todo bajo control</h3>
+              </div>
+              <div className="bg-emerald-50 p-3 rounded-full shrink-0 ml-4"><CheckCircle2 className="w-6 h-6 text-emerald-500" /></div>
+           </div>
+         ) : null}
+
+         {opAbiertas !== null && (
+           <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-100 flex items-center justify-between">
+              <div>
+                 <p className="text-sm font-bold text-blue-500">Producción</p>
+                 <h3 className="text-2xl font-black text-gray-800">Hay {opAbiertas} OP abierta{opAbiertas === 1 ? '' : 's'}</h3>
+              </div>
+              <div className="bg-blue-50 p-3 rounded-full shrink-0 ml-4"><Factory className="w-6 h-6 text-blue-500" /></div>
+           </div>
+         )}
+
+         {devolucionesHoy > 0 ? (
+           <div className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 flex items-center justify-between">
+              <div>
+                 <p className="text-sm font-bold text-orange-500">Devoluciones</p>
+                 <h3 className="text-2xl font-black text-gray-800">Hoy se recibieron {devolucionesHoy} Devolucion{devolucionesHoy === 1 ? '' : 'es'}</h3>
+              </div>
+              <div className="bg-orange-50 p-3 rounded-full shrink-0 ml-4"><RotateCcw className="w-6 h-6 text-orange-500" /></div>
+           </div>
+         ) : devolucionesHoy === 0 ? (
+           <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between">
+              <div>
+                 <p className="text-sm font-bold text-emerald-500">Devoluciones</p>
+                 <h3 className="text-2xl font-black text-gray-800">Hoy no hay devoluciones</h3>
+              </div>
+              <div className="bg-emerald-50 p-3 rounded-full shrink-0 ml-4"><CheckCircle2 className="w-6 h-6 text-emerald-500" /></div>
+           </div>
+         ) : null}
       </div>
 
     </div>

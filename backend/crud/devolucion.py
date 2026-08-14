@@ -8,6 +8,9 @@ from schemas.devolucion import DevolucionCreate
 from typing import Optional
 from datetime import date
 
+def count_hoy(db: Session) -> int:
+    return db.query(Devolucion).filter(func.date(Devolucion.fecha) == date.today()).count()
+
 def create_devolucion(db: Session, devolucion_in: DevolucionCreate, user_id: int):
     # 1. Recuperar Punto De Venta para auto-numeración
     pv = db.query(PuntoVenta).filter(PuntoVenta.id == devolucion_in.punto_venta_id).first()

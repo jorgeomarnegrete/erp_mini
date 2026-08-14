@@ -14,6 +14,10 @@ def _proximo_numero(db: Session) -> int:
     return (ultimo or 0) + 1
 
 
+def count_abiertas(db: Session) -> int:
+    return db.query(OrdenProduccion).filter(OrdenProduccion.estado == "Abierta").count()
+
+
 def proximo_lote(db: Session, fecha_vencimiento: datetime.date) -> str:
     """
     Sugiere el próximo nro_lote para una fecha de vencimiento dada, con formato

@@ -605,6 +605,89 @@ async def lifespan(app: FastAPI):
 
     db.commit()
 
+    # 2c-bis. Reporte de Stock Mínimo
+    p_reporte_stock_min_exist = db.query(models.plantilla.PlantillaDocumento).filter(models.plantilla.PlantillaDocumento.tipo_documento == "REPORTE_STOCK_MINIMO").first()
+
+    html_reporte_stock_min = """
+    <html>
+    <head>
+      <style>
+         body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; }
+         .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 20px; }
+         .logo { max-width: 150px; max-height: 80px; }
+         .empresa-datos { text-align: left; font-size: 11px; color: #555; margin-left: 20px; }
+         .title-box { text-align: right; }
+         .title-box h1 { margin: 0; color: #111; font-size: 22px; }
+         .filtros-box { margin-top: 20px; padding: 12px 15px; border: 1px solid #ddd; background: #fafafa; border-radius: 5px; font-size: 11px; }
+         .filtros-box span { margin-right: 25px; }
+         table.items { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 10px; }
+         table.items th { background-color: #222; color: #fff; padding: 8px; text-align: left; }
+         table.items td { border-bottom: 1px solid #eee; padding: 8px; }
+         .stock-bajo { color: #b91c1c; font-weight: bold; }
+         .footer-total { margin-top: 15px; text-align: right; font-size: 12px; font-weight: bold; }
+      </style>
+    </head>
+    <body>
+       <div class="header">
+          <table style="width: 100%;"><tr>
+             <td style="width:50%; vertical-align: top;">
+                {% if empresa.logo_base64 %}
+                  <img class="logo" src="{{ empresa.logo_base64 }}" />
+                {% endif %}
+                <div class="empresa-datos">
+                   <strong>{{ empresa.razon_social }}</strong><br>
+                   CUIT: {{ empresa.cuit or '-' }}<br>
+                   Dir: {{ empresa.domicilio_comercial or '-' }}<br>
+                </div>
+             </td>
+             <td style="width:50%; vertical-align: top;" class="title-box">
+                <h1>REPORTE DE STOCK MÍNIMO</h1>
+                Generado: {{ fecha_generacion.strftime('%d/%m/%Y %H:%M') if fecha_generacion else '' }}
+             </td>
+          </tr></table>
+       </div>
+
+       <div class="filtros-box">
+          <span><strong>Familia:</strong> {{ filtros.familia_label }}</span>
+       </div>
+
+       <table class="items">
+          <thead>
+             <tr>
+                <th>Código</th>
+                <th>Descripción</th>
+                <th>Familia</th>
+                <th style="text-align: right;">Stock</th>
+                <th style="text-align: right;">Stock Mínimo</th>
+             </tr>
+          </thead>
+          <tbody>
+             {% for prod in productos %}
+             <tr>
+                <td>{{ prod.codigo_interno }}</td>
+                <td>{{ prod.nombre }}</td>
+                <td>{{ prod.categoria.nombre if prod.categoria else '' }}</td>
+                <td class="stock-bajo" style="text-align: right;">{{ "%.2f"|format(prod.stock_actual) }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(prod.stock_minimo) }}</td>
+             </tr>
+             {% endfor %}
+          </tbody>
+       </table>
+
+       <div class="footer-total">Total de productos bajo stock mínimo: {{ total }}</div>
+    </body>
+    </html>
+    """
+
+    if not p_reporte_stock_min_exist:
+        p_reporte_stock_min = models.plantilla.PlantillaDocumento(nombre="Reporte de Stock Mínimo", tipo_documento="REPORTE_STOCK_MINIMO", codigo_html=html_reporte_stock_min, activa=True)
+        db.add(p_reporte_stock_min)
+    else:
+        # Forzar actualización de la plantilla si ya existe pero está rota
+        p_reporte_stock_min_exist.codigo_html = html_reporte_stock_min
+
+    db.commit()
+
     # 2d. Devolución
     p_devolucion_exist = db.query(models.plantilla.PlantillaDocumento).filter(models.plantilla.PlantillaDocumento.tipo_documento == "DEVOLUCION").first()
 
@@ -901,6 +984,12 @@ async def lifespan(app: FastAPI):
         db.add(m_devoluciones)
         db.commit()
 
+    m_stock_minimo_exist = db.query(Menu).filter(Menu.ruta == "/stock/stock-minimo").first()
+    if not m_stock_minimo_exist:
+        m_stock_minimo = Menu(nombre="Stock Mínimo", ruta="/stock/stock-minimo", icono="AlertTriangle", parent_id=m_stock_exist.id, orden=4)
+        db.add(m_stock_minimo)
+        db.commit()
+
     # Auto-asignar a administradores si no lo tienen
     admins = db.query(User).filter(User.is_admin == True).all()
     for admin in admins:
@@ -940,6 +1029,11 @@ async def lifespan(app: FastAPI):
         m_dev = db.query(Menu).filter(Menu.ruta == "/stock/devoluciones").first()
         if m_dev and m_dev.id not in admin_menus:
             admin.menus.append(m_dev)
+            added = True
+
+        m_stk_min = db.query(Menu).filter(Menu.ruta == "/stock/stock-minimo").first()
+        if m_stk_min and m_stk_min.id not in admin_menus:
+            admin.menus.append(m_stk_min)
             added = True
 
         m_pedidos_exist = db.query(Menu).filter(Menu.ruta == "/pedidos").first()
