@@ -669,6 +669,7 @@ async def lifespan(app: FastAPI):
        <table class="items">
           <thead>
              <tr>
+                <th style="width: 90px;">Código</th>
                 <th style="width: 80px;">Cant.</th>
                 <th>Descripción</th>
                 <th style="width: 140px;">Lote</th>
@@ -677,6 +678,7 @@ async def lifespan(app: FastAPI):
           <tbody>
              {% for det in detalles %}
              <tr>
+                <td>{{ det.producto.codigo_interno }}</td>
                 <td>{{ "%.2f"|format(det.cantidad) }}</td>
                 <td>{{ det.producto.nombre }}</td>
                 <td>{{ det.nro_lote or '-' }}</td>

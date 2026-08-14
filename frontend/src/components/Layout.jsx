@@ -70,7 +70,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <nav className="bg-white shadow-md border-b border-gray-100 relative z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link to="/" className="flex-shrink-0 flex items-center shrink-0 mr-8">
@@ -224,7 +224,7 @@ export default function Layout() {
         </div>
       </nav>
 
-      <main className="flex-1 w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="flex-1 w-full py-8 px-4 sm:px-6 lg:px-8">
         <Outlet />
       </main>
     </div>

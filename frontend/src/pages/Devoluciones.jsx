@@ -528,6 +528,7 @@ export default function Devoluciones() {
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-slate-100 text-slate-800 text-xs font-black uppercase">
                     <tr>
+                      <th className="p-3 border-b">Código</th>
                       <th className="p-3 border-b">Producto</th>
                       <th className="p-3 border-b text-center">Cantidad</th>
                       <th className="p-3 border-b text-center">Lote</th>
@@ -536,6 +537,7 @@ export default function Devoluciones() {
                   <tbody className="divide-y divide-gray-100">
                     {viewDevolucion.detalles.map(det => (
                       <tr key={det.id}>
+                        <td className="p-3 text-xs font-mono font-bold text-gray-500">{det.producto?.codigo_interno}</td>
                         <td className="p-3 text-sm font-bold text-gray-700">{det.producto?.nombre}</td>
                         <td className="p-3 text-center font-black text-sm text-gray-800">{det.cantidad.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                         <td className="p-3 text-center font-mono text-xs text-gray-600">{det.nro_lote || '-'}</td>
@@ -641,6 +643,7 @@ export default function Devoluciones() {
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-slate-100/50 text-slate-800 text-xs font-black uppercase">
                     <tr>
+                      <th className="p-3 border-b text-center w-24">Código</th>
                       <th className="p-3 w-1/2 border-b">Producto</th>
                       <th className="p-3 border-b text-center w-32">Cantidad</th>
                       <th className="p-3 border-b text-center w-20">Unidad</th>
@@ -653,6 +656,9 @@ export default function Devoluciones() {
                       const prod = productos.find(p => p.id === d.producto_id);
                       return (
                         <tr key={d.temp_id} className="border-b border-gray-100">
+                          <td className="p-2 text-center font-mono text-xs font-bold text-gray-500">
+                            {prod?.codigo_interno || '—'}
+                          </td>
                           <td className="p-2">
                             <div className="relative">
                               <input
