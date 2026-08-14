@@ -385,7 +385,7 @@ export default function Productos() {
 
   return (
     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden relative flex flex-col h-full">
-      <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-white flex items-center justify-between">
+      <div className="px-4 sm:px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-white flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-0 lg:justify-between">
         <div className="flex items-center">
           <div className="bg-indigo-600 p-2 rounded-lg text-white mr-4 shadow-md">
             <Package className="w-6 h-6" />
@@ -393,7 +393,7 @@ export default function Productos() {
           <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Productos</h2>
         </div>
 
-        <div className="flex-1 max-w-md mx-8 relative group">
+        <div className="w-full lg:flex-1 lg:max-w-md lg:mx-8 relative group">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <Search className="h-5 w-5 text-indigo-400 group-focus-within:text-indigo-600 transition-colors" />
           </div>
@@ -406,7 +406,7 @@ export default function Productos() {
           />
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-wrap items-center gap-2 lg:gap-4">
           <span className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold shadow-sm border border-indigo-200">
             {filteredProductos.length} de {productos.length} SKUs
           </span>
