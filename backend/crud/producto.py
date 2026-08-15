@@ -11,7 +11,7 @@ def get_all(db: Session, skip: int = 0, limit: int | None = None):
 def get_by_id(db: Session, record_id: int):
     return db.query(Producto).filter(Producto.id == record_id).first()
 
-def _query_bajo_stock_minimo(db: Session, categoria_id: int | None = None):
+def _query_bajo_stock_minimo(db: Session, categoria_id: int | None = None, subfamilia_id: int | None = None):
     query = db.query(Producto).filter(
         Producto.activo == True,
         Producto.stock_minimo > 0,
@@ -19,15 +19,17 @@ def _query_bajo_stock_minimo(db: Session, categoria_id: int | None = None):
     )
     if categoria_id is not None:
         query = query.filter(Producto.categoria_id == categoria_id)
+    if subfamilia_id is not None:
+        query = query.filter(Producto.subfamilia_id == subfamilia_id)
     return query
 
 def count_bajo_stock_minimo(db: Session):
     """Cuenta productos activos con control de stock mínimo habilitado (stock_minimo > 0) que están por debajo"""
     return _query_bajo_stock_minimo(db).count()
 
-def get_bajo_stock_minimo(db: Session, categoria_id: int | None = None):
-    """Lista productos activos por debajo del stock mínimo, opcionalmente filtrados por familia"""
-    return _query_bajo_stock_minimo(db, categoria_id=categoria_id).order_by(Producto.nombre.asc()).all()
+def get_bajo_stock_minimo(db: Session, categoria_id: int | None = None, subfamilia_id: int | None = None):
+    """Lista productos activos por debajo del stock mínimo, opcionalmente filtrados por familia y/o subfamilia"""
+    return _query_bajo_stock_minimo(db, categoria_id=categoria_id, subfamilia_id=subfamilia_id).order_by(Producto.nombre.asc()).all()
 
 def get_by_codigo_interno(db: Session, codigo: str):
     return db.query(Producto).filter(Producto.codigo_interno == codigo).first()

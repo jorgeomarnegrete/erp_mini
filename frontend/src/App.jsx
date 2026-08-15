@@ -10,6 +10,7 @@ import Vendedores from './pages/Vendedores';
 import Clientes from './pages/Clientes';
 import PuntosVenta from './pages/PuntosVenta';
 import Categorias from './pages/Categorias';
+import Subfamilias from './pages/Subfamilias';
 import Zonas from './pages/Zonas';
 import TasasIva from './pages/TasasIva';
 import Productos from './pages/Productos';
@@ -127,6 +128,7 @@ function App() {
             <Route path="archivos/listas-precios" element={<ListasPrecios />} />
             <Route path="archivos/vendedores" element={<Vendedores />} />
             <Route path="archivos/categorias" element={<Categorias />} />
+            <Route path="archivos/subfamilias" element={<Subfamilias />} />
             <Route path="archivos/zonas" element={<Zonas />} />
             <Route path="archivos/productos" element={<Productos />} />
             <Route path="clientes" element={<Clientes />} />

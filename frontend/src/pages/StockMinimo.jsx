@@ -5,13 +5,16 @@ import { AlertTriangle, X, Printer } from 'lucide-react';
 export default function StockMinimo() {
   const { api } = useAuth();
   const [categorias, setCategorias] = useState([]);
+  const [subfamilias, setSubfamilias] = useState([]);
   const [categoriaId, setCategoriaId] = useState('');
+  const [subfamiliaId, setSubfamiliaId] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(true);
   const [isPrinting, setIsPrinting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     api.get('/api/categorias').then(res => setCategorias(res.data)).catch(() => {});
+    api.get('/api/subfamilias').then(res => setSubfamilias(res.data)).catch(() => {});
   }, [api]);
 
   const handlePrintReporte = async () => {
@@ -20,6 +23,7 @@ export default function StockMinimo() {
     try {
       const params = {};
       if (categoriaId) params.categoria_id = categoriaId;
+      if (subfamiliaId) params.subfamilia_id = subfamiliaId;
 
       const response = await api.get('/api/productos/alertas/stock-minimo/pdf', { params, responseType: 'blob' });
       const fileURL = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
@@ -84,12 +88,22 @@ export default function StockMinimo() {
 
               <label className="block text-[11px] font-bold text-gray-500 mb-1">Familia</label>
               <select
-                className="w-full p-2.5 rounded-lg border border-gray-300 font-bold bg-white mb-6"
+                className="w-full p-2.5 rounded-lg border border-gray-300 font-bold bg-white mb-4"
                 value={categoriaId}
                 onChange={e => setCategoriaId(e.target.value)}
               >
                 <option value="">Todas</option>
                 {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+
+              <label className="block text-[11px] font-bold text-gray-500 mb-1">Subfamilia</label>
+              <select
+                className="w-full p-2.5 rounded-lg border border-gray-300 font-bold bg-white mb-6"
+                value={subfamiliaId}
+                onChange={e => setSubfamiliaId(e.target.value)}
+              >
+                <option value="">Todas</option>
+                {subfamilias.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
               </select>
 
               <button

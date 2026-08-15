@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from database import engine, get_db
 from models.user import Base, User, Menu
 from core.security import get_password_hash
-from routers import auth, users, tipo_resp, tipo_doc, lista_precio, vendedor, cliente, punto_venta, categoria, tasa_iva, producto, empresa, cotizacion, plantilla, proveedor, zona, stk_mov
+from routers import auth, users, tipo_resp, tipo_doc, lista_precio, vendedor, cliente, punto_venta, categoria, subfamilia, tasa_iva, producto, empresa, cotizacion, plantilla, proveedor, zona, stk_mov
 import models.tipo_resp
 import models.tipo_doc
 import models.lista_precio
@@ -13,6 +13,7 @@ import models.vendedor
 import models.cliente
 import models.punto_venta
 import models.categoria
+import models.subfamilia
 import models.tasa_iva
 import models.producto
 import models.empresa
@@ -64,6 +65,8 @@ async def lifespan(app: FastAPI):
         # Vehículo/Chofer en Devoluciones (reemplaza a Transporte, que queda solo para registros históricos)
         db.execute(text("ALTER TABLE devoluciones ADD COLUMN IF NOT EXISTS vehiculo_id INTEGER REFERENCES vehiculos(id)"))
         db.execute(text("ALTER TABLE devoluciones ADD COLUMN IF NOT EXISTS chofer_id INTEGER REFERENCES choferes(id)"))
+        # Subfamilia opcional en Productos (independiente de la Familia)
+        db.execute(text("ALTER TABLE productos ADD COLUMN IF NOT EXISTS subfamilia_id INTEGER REFERENCES subfamilias(id)"))
         db.commit()
     except Exception as e:
         db.rollback()
@@ -650,6 +653,7 @@ async def lifespan(app: FastAPI):
 
        <div class="filtros-box">
           <span><strong>Familia:</strong> {{ filtros.familia_label }}</span>
+          <span><strong>Subfamilia:</strong> {{ filtros.subfamilia_label }}</span>
        </div>
 
        <table class="items">
@@ -1307,6 +1311,15 @@ async def lifespan(app: FastAPI):
             db.add(m_zonas)
             db.commit()
 
+    # Menú Subfamilias en Archivos Operativos
+    m_subf_exist = db.query(Menu).filter(Menu.ruta == "/archivos/subfamilias").first()
+    if not m_subf_exist:
+        m_archivos_ref = db.query(Menu).filter(Menu.nombre == "Archivos").first()
+        if m_archivos_ref:
+            m_subf = Menu(nombre="Subfamilias", ruta="/archivos/subfamilias", icono="Layers", parent_id=m_archivos_ref.id, orden=9)
+            db.add(m_subf)
+            db.commit()
+
     # Inyectar sección Producción + Órdenes de Producción si no existe
     m_prod_exist = db.query(Menu).filter(Menu.nombre == "Producción").first()
     if not m_prod_exist:
@@ -1360,6 +1373,7 @@ app.include_router(vendedor.router)
 app.include_router(cliente.router)
 app.include_router(punto_venta.router)
 app.include_router(categoria.router)
+app.include_router(subfamilia.router)
 app.include_router(tasa_iva.router)
 app.include_router(producto.router)
 app.include_router(empresa.router)

@@ -9,10 +9,12 @@ export default function Productos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [soloConStock, setSoloConStock] = useState(true);
   const [filtroFamilia, setFiltroFamilia] = useState('');
+  const [filtroSubfamilia, setFiltroSubfamilia] = useState('');
   const { api } = useAuth();
-  
+
   // Catálogos para listboxes
   const [categorias, setCategorias] = useState([]);
+  const [subfamilias, setSubfamilias] = useState([]);
   const [tasasIva, setTasasIva] = useState([]);
   const [listasPrecios, setListasPrecios] = useState([]);
 
@@ -22,7 +24,7 @@ export default function Productos() {
   
   const [formData, setFormData] = useState({
     id: null, codigo_interno: '', codigo_barras: '', nombre: '', descripcion: '',
-    categoria_id: '', tasa_iva_id: '', costo_neto: 0, stock_actual: 0, stock_minimo: 0, unidad: 'Unidades', activo: true,
+    categoria_id: '', subfamilia_id: '', tasa_iva_id: '', costo_neto: 0, stock_actual: 0, stock_minimo: 0, unidad: 'Unidades', activo: true,
     precios_costum: [] // Array vivo de precios excepcionales { lista_precio_id, precio_personalizado }
   });
   
@@ -64,15 +66,17 @@ export default function Productos() {
 
   const fetchAllData = async () => {
     try {
-      const [prodRes, catRes, ivaRes, lpRes] = await Promise.all([
+      const [prodRes, catRes, subfRes, ivaRes, lpRes] = await Promise.all([
         api.get('/api/productos'),
         api.get('/api/categorias'),
+        api.get('/api/subfamilias'),
         api.get('/api/tasas-iva'),
         api.get('/api/listas-precios')
       ]);
       setProductos(prodRes.data);
       savedObsRef.current = Object.fromEntries(prodRes.data.map(p => [p.id, p.observacion || '']));
       setCategorias(catRes.data);
+      setSubfamilias(subfRes.data);
       setTasasIva(ivaRes.data);
       setListasPrecios(lpRes.data);
     } catch (err) {
@@ -128,7 +132,7 @@ export default function Productos() {
 
   const getEmptyForm = () => ({
     id: null, codigo_interno: '', codigo_barras: '', nombre: '', descripcion: '',
-    categoria_id: categorias[0]?.id || '', tasa_iva_id: tasasIva.find(t=>t.valor===21)?.id || tasasIva[0]?.id || '',
+    categoria_id: categorias[0]?.id || '', subfamilia_id: '', tasa_iva_id: tasasIva.find(t=>t.valor===21)?.id || tasasIva[0]?.id || '',
     costo_neto: 0, stock_actual: 0, stock_minimo: 0, unidad: 'Unidades', activo: true, precios_costum: []
   });
 
@@ -285,6 +289,7 @@ export default function Productos() {
       nombre: prod.nombre,
       descripcion: prod.descripcion || '',
       categoria_id: prod.categoria_id,
+      subfamilia_id: prod.subfamilia_id || '',
       tasa_iva_id: prod.tasa_iva_id,
       costo_neto: prod.costo_neto,
       stock_actual: prod.stock_actual,
@@ -343,6 +348,7 @@ export default function Productos() {
       delete payload.id;
       if (payload.codigo_barras === '') payload.codigo_barras = null;
       if (payload.descripcion === '') payload.descripcion = null;
+      if (payload.subfamilia_id === '') payload.subfamilia_id = null;
 
       if (modalMode === 'create') {
         await api.post('/api/productos', payload);
@@ -370,6 +376,7 @@ export default function Productos() {
   const filteredProductos = productos.filter((p) => {
     if (soloConStock && p.stock_actual <= 0) return false;
     if (filtroFamilia && p.categoria_id !== parseInt(filtroFamilia)) return false;
+    if (filtroSubfamilia && p.subfamilia_id !== parseInt(filtroSubfamilia)) return false;
     if (!searchTerm.trim()) return true;
     const tokens = searchTerm.toLowerCase().split(/\s+/).filter(t => t);
     const textToSearch = `${p.codigo_interno} ${p.nombre} ${p.categoria.nombre} ${p.codigo_barras || ''}`.toLowerCase();
@@ -439,6 +446,18 @@ export default function Productos() {
           >
             <option value="">Todas</option>
             {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black text-gray-500 uppercase tracking-wide">Subfamilia</span>
+          <select
+            value={filtroSubfamilia}
+            onChange={e => setFiltroSubfamilia(e.target.value)}
+            className="p-2 rounded-lg border border-gray-300 text-sm font-bold bg-white outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Todas</option>
+            {subfamilias.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
           </select>
         </div>
       </div>
@@ -567,6 +586,16 @@ export default function Productos() {
                           <label className="block text-sm font-bold text-gray-700 mb-1">Regimen IVA (AFIP) *</label>
                           <select required value={formData.tasa_iva_id} onChange={e => setFormData({...formData, tasa_iva_id: parseInt(e.target.value)})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 text-gray-800 font-bold focus:ring-2 focus:ring-amber-400 outline-none bg-amber-50/30 cursor-pointer">
                              {tasasIva.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                          </select>
+                        </div>
+                     </div>
+
+                     <div className="grid grid-cols-2 gap-5">
+                        <div className="w-full">
+                          <label className="block text-sm font-bold text-gray-700 mb-1">Subfamilia (opcional)</label>
+                          <select value={formData.subfamilia_id} onChange={e => setFormData({...formData, subfamilia_id: e.target.value ? parseInt(e.target.value) : ''})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 text-gray-800 font-bold focus:ring-2 focus:ring-indigo-500 outline-none bg-indigo-50/50 cursor-pointer">
+                             <option value="">Sin subfamilia</option>
+                             {subfamilias.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
                           </select>
                         </div>
                      </div>

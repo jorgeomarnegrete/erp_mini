@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from schemas.categoria import CategoriaResponse
+from schemas.subfamilia import SubfamiliaResponse
 from schemas.tasa_iva import TasaIvaResponse
 from schemas.lista_precio import ListaPrecioResponse
 from datetime import datetime
@@ -37,6 +38,7 @@ class ProductoBase(BaseModel):
     descripcion: Optional[str] = None
     observacion: Optional[str] = None
     categoria_id: int
+    subfamilia_id: Optional[int] = None
     tasa_iva_id: int
     costo_neto: float = Field(default=0.0, ge=0)
     stock_actual: float = Field(default=0.0)
@@ -55,6 +57,7 @@ class ProductoUpdate(BaseModel):
     descripcion: str | None = None
     observacion: str | None = None
     categoria_id: int | None = None
+    subfamilia_id: int | None = None
     tasa_iva_id: int | None = None
     costo_neto: float | None = None
     stock_actual: float | None = None
@@ -66,6 +69,7 @@ class ProductoUpdate(BaseModel):
 class ProductoResponse(ProductoBase):
     id: int
     categoria: CategoriaResponse
+    subfamilia: Optional[SubfamiliaResponse] = None
     tasa_iva: TasaIvaResponse
     precios_personalizados: List[ProductoPrecioResponse]
     lotes: List[ProductoLoteResponse] = []

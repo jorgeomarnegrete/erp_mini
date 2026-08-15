@@ -14,6 +14,7 @@ class Producto(Base):
 
     # Anclas comerciales
     categoria_id = Column(Integer, ForeignKey("categorias_rubros.id"), nullable=False)
+    subfamilia_id = Column(Integer, ForeignKey("subfamilias.id"), nullable=True)
     tasa_iva_id = Column(Integer, ForeignKey("tasas_iva.id"), nullable=False)
     
     costo_neto = Column(Float, nullable=False, default=0.0)
@@ -27,6 +28,7 @@ class Producto(Base):
 
     # Relaciones Eager.
     categoria = relationship("Categoria", lazy="joined")
+    subfamilia = relationship("Subfamilia", lazy="joined")
     tasa_iva = relationship("TasaIva", lazy="joined")
     # Borrar precios costum si el producto muere
     precios_personalizados = relationship("ProductoPrecio", back_populates="producto", cascade="all, delete-orphan", lazy="joined")

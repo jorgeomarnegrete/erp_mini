@@ -6,6 +6,7 @@ from datetime import datetime
 from database import get_db
 from models.user import User
 from models.categoria import Categoria
+from models.subfamilia import Subfamilia
 from models.plantilla import PlantillaDocumento
 from schemas.producto import ProductoCreate, ProductoUpdate, ProductoResponse
 from schemas.producto_import import ImportProductoResumen, ImportProductoConfirmarResponse
@@ -52,9 +53,9 @@ async def get_alerta_stock_minimo(current_user: User = Depends(get_current_user)
     return {"cantidad": crud_prod.count_bajo_stock_minimo(db)}
 
 @router.get("/alertas/stock-minimo/pdf")
-async def export_reporte_stock_minimo_pdf(categoria_id: Optional[int] = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Genera el PDF del reporte de productos bajo stock mínimo, opcionalmente filtrado por familia"""
-    items = crud_prod.get_bajo_stock_minimo(db, categoria_id=categoria_id)
+async def export_reporte_stock_minimo_pdf(categoria_id: Optional[int] = None, subfamilia_id: Optional[int] = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Genera el PDF del reporte de productos bajo stock mínimo, opcionalmente filtrado por familia y/o subfamilia"""
+    items = crud_prod.get_bajo_stock_minimo(db, categoria_id=categoria_id, subfamilia_id=subfamilia_id)
 
     empresa = get_empresa(db)
     if not empresa:
@@ -69,6 +70,11 @@ async def export_reporte_stock_minimo_pdf(categoria_id: Optional[int] = None, cu
         categoria = db.query(Categoria).filter(Categoria.id == categoria_id).first()
         familia_label = categoria.nombre if categoria else "Todas"
 
+    subfamilia_label = "Todas"
+    if subfamilia_id:
+        subfamilia = db.query(Subfamilia).filter(Subfamilia.id == subfamilia_id).first()
+        subfamilia_label = subfamilia.nombre if subfamilia else "Todas"
+
     try:
         datos_jinja = {
             "productos": items,
@@ -77,6 +83,7 @@ async def export_reporte_stock_minimo_pdf(categoria_id: Optional[int] = None, cu
             "fecha_generacion": datetime.now(),
             "filtros": {
                 "familia_label": familia_label,
+                "subfamilia_label": subfamilia_label,
             },
         }
         pdf_bytes = generar_pdf_desde_html(plantilla.codigo_html, datos_jinja)
