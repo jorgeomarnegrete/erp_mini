@@ -33,6 +33,7 @@ from routers import pedidos, remitos, remitos_compra, transporte, carga_preparac
 from routers import orden_produccion
 from routers import devoluciones
 from routers import vehiculo, chofer
+from routers import vencimiento
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -1278,3 +1279,4 @@ app.include_router(producto_etiqueta.router)
 app.include_router(orden_produccion.router)
 app.include_router(vehiculo.router)
 app.include_router(chofer.router)
+app.include_router(vencimiento.router)

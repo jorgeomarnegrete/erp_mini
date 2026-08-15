@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { IdCard, Edit, Trash2, Plus, X } from 'lucide-react';
+import { IdCard, Edit, Trash2, Plus, X, CalendarClock } from 'lucide-react';
+import VencimientosModal from '../components/VencimientosModal';
 
 export default function Choferes() {
   const [choferes, setChoferes] = useState([]);
@@ -11,6 +12,14 @@ export default function Choferes() {
   const [modalMode, setModalMode] = useState('create');
   const [formData, setFormData] = useState({ id: null, nombre: '' });
   const [formError, setFormError] = useState('');
+
+  const [isVencModalOpen, setIsVencModalOpen] = useState(false);
+  const [vencChofer, setVencChofer] = useState(null);
+
+  const openVencModal = (chofer) => {
+    setVencChofer(chofer);
+    setIsVencModalOpen(true);
+  };
 
   const fetchData = async () => {
     try {
@@ -111,6 +120,9 @@ export default function Choferes() {
                   <span className="text-base font-extrabold text-indigo-900 tracking-tight bg-indigo-50 px-2 py-0.5 rounded">{c.nombre}</span>
                 </td>
                 <td className="px-8 py-4 whitespace-nowrap text-center space-x-3">
+                  <button onClick={() => openVencModal(c)} className="text-amber-600 hover:text-amber-800 transition-colors" title="Vencimientos">
+                    <CalendarClock className="w-5 h-5 inline" />
+                  </button>
                   <button onClick={() => openEditModal(c)} className="text-indigo-600 hover:text-indigo-900 transition-colors" title="Editar">
                     <Edit className="w-5 h-5 inline" />
                   </button>
@@ -156,6 +168,14 @@ export default function Choferes() {
           </div>
         </div>
       )}
+
+      <VencimientosModal
+        isOpen={isVencModalOpen}
+        onClose={() => setIsVencModalOpen(false)}
+        entidadTipo="chofer"
+        entidadId={vencChofer?.id}
+        entidadLabel={vencChofer?.nombre}
+      />
     </div>
   );
 }

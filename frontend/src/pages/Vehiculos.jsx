@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { Car, Edit, Trash2, Plus, X } from 'lucide-react';
+import { Car, Edit, Trash2, Plus, X, CalendarClock } from 'lucide-react';
+import VencimientosModal from '../components/VencimientosModal';
 
 export default function Vehiculos() {
   const [vehiculos, setVehiculos] = useState([]);
@@ -11,6 +12,14 @@ export default function Vehiculos() {
   const [modalMode, setModalMode] = useState('create');
   const [formData, setFormData] = useState({ id: null, descripcion: '', patente: '' });
   const [formError, setFormError] = useState('');
+
+  const [isVencModalOpen, setIsVencModalOpen] = useState(false);
+  const [vencVehiculo, setVencVehiculo] = useState(null);
+
+  const openVencModal = (vehiculo) => {
+    setVencVehiculo(vehiculo);
+    setIsVencModalOpen(true);
+  };
 
   const fetchData = async () => {
     try {
@@ -113,6 +122,9 @@ export default function Vehiculos() {
                 </td>
                 <td className="px-8 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">{v.patente || '-'}</td>
                 <td className="px-8 py-4 whitespace-nowrap text-center space-x-3">
+                  <button onClick={() => openVencModal(v)} className="text-amber-600 hover:text-amber-800 transition-colors" title="Vencimientos">
+                    <CalendarClock className="w-5 h-5 inline" />
+                  </button>
                   <button onClick={() => openEditModal(v)} className="text-indigo-600 hover:text-indigo-900 transition-colors" title="Editar">
                     <Edit className="w-5 h-5 inline" />
                   </button>
@@ -162,6 +174,14 @@ export default function Vehiculos() {
           </div>
         </div>
       )}
+
+      <VencimientosModal
+        isOpen={isVencModalOpen}
+        onClose={() => setIsVencModalOpen(false)}
+        entidadTipo="vehiculo"
+        entidadId={vencVehiculo?.id}
+        entidadLabel={vencVehiculo?.descripcion}
+      />
     </div>
   );
 }

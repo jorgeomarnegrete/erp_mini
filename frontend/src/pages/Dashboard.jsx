@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../App';
-import { Building2, Phone, Mail, Globe, MapPin, AlertTriangle, CheckCircle2, Factory, RotateCcw } from 'lucide-react';
+import { Building2, Phone, Mail, Globe, MapPin, AlertTriangle, CheckCircle2, Factory, RotateCcw, CalendarClock } from 'lucide-react';
 
 export default function Dashboard() {
   const [empresa, setEmpresa] = useState(null);
   const [alertaStock, setAlertaStock] = useState(null);
   const [opAbiertas, setOpAbiertas] = useState(null);
   const [devolucionesHoy, setDevolucionesHoy] = useState(null);
+  const [vencimientosProximos, setVencimientosProximos] = useState(null);
   const [loading, setLoading] = useState(true);
   const { api, user } = useAuth();
 
@@ -44,10 +45,19 @@ export default function Dashboard() {
         console.error("Error cargando devoluciones de hoy:", err);
       }
     };
+    const fetchVencimientosProximos = async () => {
+      try {
+        const res = await api.get('/api/vencimientos/alertas/proximos');
+        setVencimientosProximos(res.data.cantidad);
+      } catch (err) {
+        console.error("Error cargando vencimientos próximos:", err);
+      }
+    };
     fetchEmpresa();
     fetchAlertaStock();
     fetchOpAbiertas();
     fetchDevolucionesHoy();
+    fetchVencimientosProximos();
   }, [api]);
 
   if (loading) {
@@ -179,6 +189,24 @@ export default function Dashboard() {
               <div>
                  <p className="text-sm font-bold text-emerald-500">Devoluciones</p>
                  <h3 className="text-2xl font-black text-gray-800">Hoy no hay devoluciones</h3>
+              </div>
+              <div className="bg-emerald-50 p-3 rounded-full shrink-0 ml-4"><CheckCircle2 className="w-6 h-6 text-emerald-500" /></div>
+           </div>
+         ) : null}
+
+         {vencimientosProximos > 0 ? (
+           <div className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 flex items-center justify-between">
+              <div>
+                 <p className="text-sm font-bold text-orange-500">Vehículos y Choferes</p>
+                 <h3 className="text-2xl font-black text-gray-800">Hay {vencimientosProximos} vencimiento{vencimientosProximos === 1 ? '' : 's'} próximo{vencimientosProximos === 1 ? '' : 's'}</h3>
+              </div>
+              <div className="bg-orange-50 p-3 rounded-full shrink-0 ml-4"><CalendarClock className="w-6 h-6 text-orange-500" /></div>
+           </div>
+         ) : vencimientosProximos === 0 ? (
+           <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between">
+              <div>
+                 <p className="text-sm font-bold text-emerald-500">Vehículos y Choferes</p>
+                 <h3 className="text-2xl font-black text-gray-800">Sin vencimientos próximos</h3>
               </div>
               <div className="bg-emerald-50 p-3 rounded-full shrink-0 ml-4"><CheckCircle2 className="w-6 h-6 text-emerald-500" /></div>
            </div>
