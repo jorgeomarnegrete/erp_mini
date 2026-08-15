@@ -689,6 +689,96 @@ async def lifespan(app: FastAPI):
 
     db.commit()
 
+    # 2c-ter. Agenda de Vencimientos (Vehículos y Choferes)
+    p_reporte_agenda_exist = db.query(models.plantilla.PlantillaDocumento).filter(models.plantilla.PlantillaDocumento.tipo_documento == "REPORTE_AGENDA_VENCIMIENTOS").first()
+
+    html_reporte_agenda = """
+    <html>
+    <head>
+      <style>
+         body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; }
+         .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 20px; }
+         .logo { max-width: 150px; max-height: 80px; }
+         .empresa-datos { text-align: left; font-size: 11px; color: #555; margin-left: 20px; }
+         .title-box { text-align: right; }
+         .title-box h1 { margin: 0; color: #111; font-size: 22px; }
+         .filtros-box { margin-top: 20px; padding: 12px 15px; border: 1px solid #ddd; background: #fafafa; border-radius: 5px; font-size: 11px; }
+         .filtros-box span { margin-right: 25px; }
+         table.items { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 10px; }
+         table.items th { background-color: #222; color: #fff; padding: 8px; text-align: left; }
+         table.items td { border-bottom: 1px solid #eee; padding: 8px; }
+         .estado-vencido { color: #b91c1c; font-weight: bold; }
+         .estado-pendiente { color: #b45309; font-weight: bold; }
+         .estado-finalizado { color: #047857; font-weight: bold; }
+         .footer-total { margin-top: 15px; text-align: right; font-size: 12px; font-weight: bold; }
+      </style>
+    </head>
+    <body>
+       <div class="header">
+          <table style="width: 100%;"><tr>
+             <td style="width:50%; vertical-align: top;">
+                {% if empresa.logo_base64 %}
+                  <img class="logo" src="{{ empresa.logo_base64 }}" />
+                {% endif %}
+                <div class="empresa-datos">
+                   <strong>{{ empresa.razon_social }}</strong><br>
+                   CUIT: {{ empresa.cuit or '-' }}<br>
+                   Dir: {{ empresa.domicilio_comercial or '-' }}<br>
+                </div>
+             </td>
+             <td style="width:50%; vertical-align: top;" class="title-box">
+                <h1>AGENDA DE VENCIMIENTOS</h1>
+                Generado: {{ fecha_generacion.strftime('%d/%m/%Y %H:%M') if fecha_generacion else '' }}
+             </td>
+          </tr></table>
+       </div>
+
+       <div class="filtros-box">
+          <span><strong>Desde:</strong> {{ filtros.fecha_desde.strftime('%d/%m/%Y') if filtros.fecha_desde else '-' }}</span>
+          <span><strong>Hasta:</strong> {{ filtros.fecha_hasta.strftime('%d/%m/%Y') if filtros.fecha_hasta else '-' }}</span>
+          <span><strong>Responsable:</strong> {{ filtros.responsable_label }}</span>
+          <span><strong>Tipo:</strong> {{ filtros.tipo_label }}</span>
+       </div>
+
+       <table class="items">
+          <thead>
+             <tr>
+                <th>Tipo</th>
+                <th>Vehículo / Chofer</th>
+                <th>Trámite</th>
+                <th>Vencimiento</th>
+                <th>Responsable</th>
+                <th>Estado</th>
+             </tr>
+          </thead>
+          <tbody>
+             {% for fila in filas %}
+             <tr>
+                <td>{{ fila.tipo_label }}</td>
+                <td>{{ fila.entidad_nombre }}</td>
+                <td>{{ fila.tipo_documento }}</td>
+                <td>{{ fila.fecha_vencimiento.strftime('%d/%m/%Y') }}</td>
+                <td>{{ fila.responsable_nombre }}</td>
+                <td class="estado-{{ fila.estado|lower }}">{{ fila.estado }}</td>
+             </tr>
+             {% endfor %}
+          </tbody>
+       </table>
+
+       <div class="footer-total">Total de vencimientos: {{ total }}</div>
+    </body>
+    </html>
+    """
+
+    if not p_reporte_agenda_exist:
+        p_reporte_agenda = models.plantilla.PlantillaDocumento(nombre="Agenda de Vencimientos", tipo_documento="REPORTE_AGENDA_VENCIMIENTOS", codigo_html=html_reporte_agenda, activa=True)
+        db.add(p_reporte_agenda)
+    else:
+        # Forzar actualización de la plantilla si ya existe pero está rota
+        p_reporte_agenda_exist.codigo_html = html_reporte_agenda
+
+    db.commit()
+
     # 2d. Devolución
     p_devolucion_exist = db.query(models.plantilla.PlantillaDocumento).filter(models.plantilla.PlantillaDocumento.tipo_documento == "DEVOLUCION").first()
 
@@ -1121,6 +1211,14 @@ async def lifespan(app: FastAPI):
         db.refresh(m_choferes_menu)
         m_choferes_menu_exist = m_choferes_menu
 
+    m_agenda_menu_exist = db.query(Menu).filter(Menu.ruta == "/logistica/agenda").first()
+    if not m_agenda_menu_exist:
+        m_agenda_menu = Menu(nombre="Agenda", ruta="/logistica/agenda", icono="CalendarDays", parent_id=m_logistica_exist.id, orden=7)
+        db.add(m_agenda_menu)
+        db.commit()
+        db.refresh(m_agenda_menu)
+        m_agenda_menu_exist = m_agenda_menu
+
     # Asignar a administradores
     admins = db.query(User).filter(User.is_admin == True).all()
     for admin in admins:
@@ -1146,6 +1244,9 @@ async def lifespan(app: FastAPI):
             added_log = True
         if m_choferes_menu_exist.id not in admin_menus:
             admin.menus.append(m_choferes_menu_exist)
+            added_log = True
+        if m_agenda_menu_exist.id not in admin_menus:
+            admin.menus.append(m_agenda_menu_exist)
             added_log = True
         if added_log:
             db.commit()

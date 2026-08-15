@@ -41,3 +41,14 @@ def count_proximos(db: Session) -> int:
     hoy = date.today()
     pendientes = db.query(Vencimiento).filter(Vencimiento.finalizado == False).all()
     return sum(1 for v in pendientes if v.fecha_vencimiento <= hoy + timedelta(days=v.avisar_dias_antes))
+
+def get_for_reporte(db: Session, fecha_desde: date, fecha_hasta: date, responsable_id: int | None = None, entidad_tipo: str | None = None):
+    query = db.query(Vencimiento).filter(
+        Vencimiento.fecha_vencimiento >= fecha_desde,
+        Vencimiento.fecha_vencimiento <= fecha_hasta
+    )
+    if responsable_id is not None:
+        query = query.filter(Vencimiento.responsable_id == responsable_id)
+    if entidad_tipo is not None:
+        query = query.filter(Vencimiento.entidad_tipo == entidad_tipo)
+    return query.order_by(Vencimiento.fecha_vencimiento.asc()).all()

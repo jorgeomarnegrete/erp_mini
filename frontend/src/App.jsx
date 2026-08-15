@@ -27,6 +27,7 @@ import StockMinimo from './pages/StockMinimo';
 import Devoluciones from './pages/Devoluciones';
 import Vehiculos from './pages/Vehiculos';
 import Choferes from './pages/Choferes';
+import Agenda from './pages/Agenda';
 import Transportes from './pages/Transportes';
 import AsignacionCargas from './pages/AsignacionCargas';
 import PreparacionCarga from './pages/PreparacionCarga';
@@ -151,6 +152,7 @@ function App() {
             <Route path="logistica/control" element={<ControlDespacho />} />
             <Route path="logistica/vehiculos" element={<Vehiculos />} />
             <Route path="logistica/choferes" element={<Choferes />} />
+            <Route path="logistica/agenda" element={<Agenda />} />
             
             {/* Nueva Ruta Configuración Empresa y Diseño */}
             <Route path="config/empresa" element={user?.is_admin ? <Empresa /> : <Navigate to="/" />} />
