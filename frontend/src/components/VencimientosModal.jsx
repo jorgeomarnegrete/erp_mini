@@ -28,7 +28,7 @@ export default function VencimientosModal({ isOpen, onClose, entidadTipo, entida
     setLoading(true);
     setIsFormOpen(false);
     fetchVencimientos();
-    api.get('/api/users').then(res => setUsers(res.data)).catch(() => {});
+    api.get('/api/users/basico').then(res => setUsers(res.data)).catch(() => {});
   }, [isOpen, entidadTipo, entidadId]);
 
   const openCreateForm = () => {

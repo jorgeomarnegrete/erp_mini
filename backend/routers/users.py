@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.user import User
-from schemas.user import UserCreate, UserUpdate, UserResponse, MenuTree
+from schemas.user import UserCreate, UserUpdate, UserResponse, UserMini, MenuTree
 from crud import user as crud_user
 from routers.auth import get_current_admin_user, get_current_user
 
@@ -24,6 +24,11 @@ async def get_all_menu_tree(current_user: User = Depends(get_current_user), db: 
 
 @router.get("/users", response_model=list[UserResponse])
 async def read_all_users(current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+    return crud_user.get_users(db)
+
+@router.get("/users/basico", response_model=list[UserMini])
+async def read_all_users_basico(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Listado liviano de usuarios (id, nombre, email) para selects como 'Responsable', accesible a cualquier usuario logueado"""
     return crud_user.get_users(db)
 
 @router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)

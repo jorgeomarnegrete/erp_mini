@@ -18,7 +18,7 @@ export default function Agenda() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/api/users').then(res => setUsers(res.data)).catch(() => {});
+    api.get('/api/users/basico').then(res => setUsers(res.data)).catch(() => {});
   }, [api]);
 
   const handlePrintReporte = async () => {

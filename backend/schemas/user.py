@@ -17,6 +17,14 @@ class MenuTree(MenuBase):
 
 MenuTree.model_rebuild()
 
+class UserMini(BaseModel):
+    id: int
+    nombre: str | None = None
+    email: str
+
+    class Config:
+        from_attributes = True
+
 class UserResponse(BaseModel):
     id: int
     email: str
