@@ -44,6 +44,7 @@ class ProductoBase(BaseModel):
     stock_actual: float = Field(default=0.0)
     stock_minimo: float = Field(default=0.0)
     unidad: str = "Unidades"
+    presentacion: Optional[str] = None
     activo: bool = True
 
 class ProductoCreate(ProductoBase):
@@ -63,6 +64,7 @@ class ProductoUpdate(BaseModel):
     stock_actual: float | None = None
     stock_minimo: float | None = None
     unidad: str | None = None
+    presentacion: str | None = None
     activo: bool | None = None
     precios_costum: List[ProductoPrecioCreate] | None = None
 

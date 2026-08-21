@@ -24,7 +24,7 @@ export default function Productos() {
   
   const [formData, setFormData] = useState({
     id: null, codigo_interno: '', codigo_barras: '', nombre: '', descripcion: '',
-    categoria_id: '', subfamilia_id: '', tasa_iva_id: '', costo_neto: 0, stock_actual: 0, stock_minimo: 0, unidad: 'Unidades', activo: true,
+    categoria_id: '', subfamilia_id: '', tasa_iva_id: '', costo_neto: 0, stock_actual: 0, stock_minimo: 0, unidad: 'Unidades', presentacion: '', activo: true,
     precios_costum: [] // Array vivo de precios excepcionales { lista_precio_id, precio_personalizado }
   });
   
@@ -133,7 +133,7 @@ export default function Productos() {
   const getEmptyForm = () => ({
     id: null, codigo_interno: '', codigo_barras: '', nombre: '', descripcion: '',
     categoria_id: categorias[0]?.id || '', subfamilia_id: '', tasa_iva_id: tasasIva.find(t=>t.valor===21)?.id || tasasIva[0]?.id || '',
-    costo_neto: 0, stock_actual: 0, stock_minimo: 0, unidad: 'Unidades', activo: true, precios_costum: []
+    costo_neto: 0, stock_actual: 0, stock_minimo: 0, unidad: 'Unidades', presentacion: '', activo: true, precios_costum: []
   });
 
   const openCreateModal = () => {
@@ -295,6 +295,7 @@ export default function Productos() {
       stock_actual: prod.stock_actual,
       stock_minimo: prod.stock_minimo || 0,
       unidad: prod.unidad || 'Unidades',
+      presentacion: prod.presentacion || '',
       activo: prod.activo,
       precios_costum: prod.precios_personalizados.map(p => ({
          lista_precio_id: p.lista_precio_id,
@@ -349,6 +350,7 @@ export default function Productos() {
       if (payload.codigo_barras === '') payload.codigo_barras = null;
       if (payload.descripcion === '') payload.descripcion = null;
       if (payload.subfamilia_id === '') payload.subfamilia_id = null;
+      if (payload.presentacion === '') payload.presentacion = null;
 
       if (modalMode === 'create') {
         await api.post('/api/productos', payload);
@@ -469,6 +471,7 @@ export default function Productos() {
               <th className="px-6 py-4">Nombre</th>
               <th className="px-6 py-4">Observación</th>
               <th className="px-6 py-4 text-center">Stock</th>
+              <th className="px-6 py-4">Presentación</th>
               <th className="px-6 py-4 text-center">Acciones</th>
             </tr>
           </thead>
@@ -506,6 +509,10 @@ export default function Productos() {
                   </span>
                 </td>
 
+                <td className="px-6 py-4 text-sm font-medium text-gray-600">
+                  {prod.presentacion || '—'}
+                </td>
+
                 <td className="px-6 py-4 whitespace-nowrap text-center space-x-2">
                   <button onClick={() => openLabelModal(prod)} className="text-teal-600 bg-teal-50 p-2 rounded-lg hover:bg-teal-600 hover:text-white transition-all shadow-sm" title="Imprimir Etiqueta">
                     <Printer className="w-5 h-5" />
@@ -521,7 +528,7 @@ export default function Productos() {
             ))}
             {filteredProductos.length === 0 && (
                 <tr>
-                   <td colSpan="4" className="px-6 py-12 text-center text-gray-400 font-semibold text-lg italic">
+                   <td colSpan="5" className="px-6 py-12 text-center text-gray-400 font-semibold text-lg italic">
                      {searchTerm ? 'No se encontraron productos para esta búsqueda.' : 'No hay productos registrados.'}
                    </td>
                 </tr>
@@ -609,7 +616,7 @@ export default function Productos() {
                         <p className="text-xs font-semibold text-emerald-700 leading-snug">Precio de costo sin IVA. Se usará como base para el cálculo de márgenes.</p>
                      </div>
                      
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full">
+                     <div className="grid grid-cols-1 md:grid-cols-4 gap-5 w-full">
                         <div className="w-full">
                            <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1" title="El stock se rige por movimientos">Stock / Cantidad (Read-Only)</label>
                            <input type="number" step="0.01" readOnly disabled value={formData.stock_actual} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-100 font-black text-xl text-center outline-none text-gray-500 cursor-not-allowed" />
@@ -631,6 +638,16 @@ export default function Productos() {
                            <datalist id="unidades-list">
                               {unidadesDisponibles.map(u => <option key={u} value={u} />)}
                            </datalist>
+                        </div>
+                        <div className="w-full">
+                           <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Presentación</label>
+                           <input
+                              type="text"
+                              value={formData.presentacion}
+                              onChange={e => setFormData({...formData, presentacion: e.target.value})}
+                              className="w-full px-4 py-2.5 rounded-xl border border-gray-300 font-bold text-gray-800 text-center outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50"
+                              placeholder="Ej. 10 x 1 kg"
+                           />
                         </div>
                      </div>
 

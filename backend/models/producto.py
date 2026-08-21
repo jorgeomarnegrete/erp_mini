@@ -21,6 +21,7 @@ class Producto(Base):
     stock_actual = Column(Float, nullable=False, default=0.0)
     stock_minimo = Column(Float, nullable=False, default=0.0)
     unidad = Column(String, nullable=False, default="Unidades")
+    presentacion = Column(String, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
     
     # Lotes de stock vinculados

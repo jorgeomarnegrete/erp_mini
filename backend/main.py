@@ -67,6 +67,8 @@ async def lifespan(app: FastAPI):
         db.execute(text("ALTER TABLE devoluciones ADD COLUMN IF NOT EXISTS chofer_id INTEGER REFERENCES choferes(id)"))
         # Subfamilia opcional en Productos (independiente de la Familia)
         db.execute(text("ALTER TABLE productos ADD COLUMN IF NOT EXISTS subfamilia_id INTEGER REFERENCES subfamilias(id)"))
+        # Presentación (texto libre, ej. "10 x 1 kg")
+        db.execute(text("ALTER TABLE productos ADD COLUMN IF NOT EXISTS presentacion VARCHAR"))
         db.commit()
     except Exception as e:
         db.rollback()
@@ -661,6 +663,7 @@ async def lifespan(app: FastAPI):
              <tr>
                 <th>Código</th>
                 <th>Descripción</th>
+                <th>Presentación</th>
                 <th>Familia</th>
                 <th style="text-align: right;">Stock</th>
                 <th style="text-align: right;">Stock Mínimo</th>
@@ -671,6 +674,7 @@ async def lifespan(app: FastAPI):
              <tr>
                 <td>{{ prod.codigo_interno }}</td>
                 <td>{{ prod.nombre }}</td>
+                <td>{{ prod.presentacion or '' }}</td>
                 <td>{{ prod.categoria.nombre if prod.categoria else '' }}</td>
                 <td class="stock-bajo" style="text-align: right;">{{ "%.2f"|format(prod.stock_actual) }}</td>
                 <td style="text-align: right;">{{ "%.2f"|format(prod.stock_minimo) }}</td>
